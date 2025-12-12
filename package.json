@@ -1,6 +1,6 @@
 {
   "name": "linear-github-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CLI tool for creating GitHub issues with Linear integration",
   "main": "dist/cli.js",
   "bin": {
@@ -9,7 +9,7 @@
     "lgcmf": "./dist/lgcmf.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/cli.js dist/lgcmf.js",
     "dev": "tsx cli.ts",
     "prepublishOnly": "npm run build"
   },
