@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { config } from 'dotenv';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import updateNotifier from 'update-notifier';
 import { createParentIssue } from './commands/create-parent';
 import { createSubIssue } from './commands/create-sub';
+import { loadEnvFile } from './env-utils';
 
-// Load .env file from the project root
-// __dirname points to dist/ in compiled output, so we go up one level
-config({ path: resolve(__dirname, '..', '.env') });
+// Load .env file from current working directory, parent directories, or home directory
+loadEnvFile();
 
 // Check for updates
 const pkg = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf-8'));

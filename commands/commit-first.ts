@@ -1,12 +1,10 @@
 import { execSync } from 'child_process';
-import { config } from 'dotenv';
-import { resolve } from 'path';
 import { extractBranchPrefix, extractLinearIssueId } from '../branch-utils';
 import { LinearClientWrapper } from '../linear-client';
+import { loadEnvFile } from '../env-utils';
 
-// Load .env file from the project root
-// __dirname points to dist/commands/ in compiled output, so we go up two levels
-config({ path: resolve(__dirname, '../..', '.env') });
+// Load .env file from current working directory, parent directories, or home directory
+loadEnvFile();
 
 /**
  * Creates the first commit with proper message format
