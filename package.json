@@ -1,0 +1,56 @@
+{
+  "name": "linear-github-cli",
+  "version": "1.0.0",
+  "description": "CLI tool for creating GitHub issues with Linear integration",
+  "main": "dist/cli.js",
+  "bin": {
+    "lg": "./dist/cli.js",
+    "linear-github": "./dist/cli.js",
+    "lgcmf": "./dist/lgcmf.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx cli.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "linear",
+    "github",
+    "issues",
+    "integration",
+    "cli"
+  ],
+  "author": "negoth <welfare-talker.2m@icloud.com>",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Negoth/linear-github-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Negoth/linear-github-cli/issues"
+  },
+  "homepage": "https://github.com/Negoth/linear-github-cli#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "dependencies": {
+    "@linear/sdk": "^2.0.0",
+    "@octokit/rest": "^20.0.0",
+    "commander": "^11.0.0",
+    "date-fns": "^3.0.0",
+    "dotenv": "^16.4.5",
+    "inquirer": "^9.2.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
