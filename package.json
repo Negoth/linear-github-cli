@@ -46,11 +46,12 @@
     "date-fns": "^3.0.0",
     "dotenv": "^16.4.5",
     "inquirer": "^9.2.0",
-    "update-notifier": "^7.0.0"
+    "update-notifier": "^6.0.1"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
     "@types/node": "^20.0.0",
+    "@types/update-notifier": "^6.0.8",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   }
