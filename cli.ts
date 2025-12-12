@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { config } from 'dotenv';
+import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import updateNotifier from 'update-notifier';
 import { createParentIssue } from './commands/create-parent';
 import { createSubIssue } from './commands/create-sub';
 
@@ -9,12 +11,16 @@ import { createSubIssue } from './commands/create-sub';
 // __dirname points to dist/ in compiled output, so we go up one level
 config({ path: resolve(__dirname, '..', '.env') });
 
+// Check for updates
+const pkg = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf-8'));
+updateNotifier({ pkg }).notify();
+
 const program = new Command();
 
 program
   .name('lg')
   .description('Linear + GitHub Integration CLI - Create GitHub issues with Linear sync')
-  .version('1.0.0');
+  .version('1.0.2');
 
 program
   .command('create-parent')

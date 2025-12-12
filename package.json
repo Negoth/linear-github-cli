@@ -1,6 +1,6 @@
 {
   "name": "linear-github-cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CLI tool for creating GitHub issues with Linear integration",
   "main": "dist/cli.js",
   "bin": {
@@ -45,7 +45,8 @@
     "commander": "^11.0.0",
     "date-fns": "^3.0.0",
     "dotenv": "^16.4.5",
-    "inquirer": "^9.2.0"
+    "inquirer": "^9.2.0",
+    "update-notifier": "^7.0.0"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
