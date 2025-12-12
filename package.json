@@ -1,6 +1,6 @@
 {
   "name": "linear-github-cli",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "CLI tool for creating GitHub issues with Linear integration",
   "main": "dist/cli.js",
   "bin": {
