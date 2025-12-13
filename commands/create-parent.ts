@@ -68,6 +68,18 @@ export async function createParentIssue() {
 
   console.log(`✅ GitHub Issue #${issue.number} created: ${issue.url}`);
 
+  // Set GitHub Project date fields if project is selected
+  if (githubProject && (details.dueDate || details.startDate)) {
+    console.log('\n📅 Setting GitHub Project date fields...');
+    await githubClient.setProjectDateFields(
+      repo,
+      githubProject,
+      issue.id,
+      details.dueDate || undefined,
+      details.startDate || undefined
+    );
+  }
+
   // Step 5: Wait for Linear sync, then update metadata
   console.log('\n⏳ Waiting for Linear sync (5 seconds)...');
   await new Promise(resolve => setTimeout(resolve, 5000));

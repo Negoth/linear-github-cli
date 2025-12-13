@@ -125,6 +125,7 @@ export class InputHandler {
     title: string;
     description: string;
     dueDate: string;
+    startDate: string;
     labels: string[];
   }> {
     // Fetch labels from GitHub repository if repo is provided
@@ -172,6 +173,16 @@ export class InputHandler {
       },
       {
         type: 'input',
+        name: 'startDate',
+        message: 'Start date (YYYY-MM-DD, optional):',
+        validate: (input: string) => {
+          if (!input) return true; // Optional
+          const date = new Date(input);
+          return !isNaN(date.getTime()) || 'Invalid date format';
+        },
+      },
+      {
+        type: 'input',
         name: 'dueDate',
         message: 'Due date (YYYY-MM-DD):',
         validate: (input: string) => {
@@ -195,6 +206,7 @@ export class InputHandler {
       title: answers.title,
       description: answers.description || '',
       dueDate: answers.dueDate || '',
+      startDate: answers.startDate || '',
       labels: answers.labels || [],
     };
   }

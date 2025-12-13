@@ -163,5 +163,254 @@ export class GitHubClientWrapper {
       ];
     }
   }
+
+  /**
+   * Get project node ID by project name
+   */
+  async getProjectNodeId(repo: string, projectName: string): Promise<string | null> {
+    try {
+      const [owner] = repo.split('/');
+      const query = `query {
+        organization(login: "${owner}") {
+          projectsV2(first: 50) {
+            nodes {
+              id
+              title
+            }
+          }
+        }
+      }`;
+      
+      const output = execSync(
+        `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
+        { encoding: 'utf-8', stdio: 'pipe' }
+      );
+      
+      const result = JSON.parse(output);
+      const projects = result.data?.organization?.projectsV2?.nodes || [];
+      const project = projects.find((p: { title: string }) => p.title === projectName);
+      return project?.id || null;
+    } catch (error) {
+      console.error('⚠️  Failed to get project node ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get project field ID by field name
+   */
+  async getProjectFieldId(projectId: string, fieldName: string): Promise<string | null> {
+    try {
+      const query = `query {
+        node(id: "${projectId}") {
+          ... on ProjectV2 {
+            fields(first: 50) {
+              nodes {
+                ... on ProjectV2FieldCommon {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+      }`;
+      
+      const output = execSync(
+        `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
+        { encoding: 'utf-8', stdio: 'pipe' }
+      );
+      
+      const result = JSON.parse(output);
+      const fields = result.data?.node?.fields?.nodes || [];
+      const field = fields.find((f: { name: string }) => f.name === fieldName);
+      return field?.id || null;
+    } catch (error) {
+      console.error(`⚠️  Failed to get field ID for "${fieldName}":`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get project item ID by issue ID
+   */
+  async getProjectItemId(projectId: string, issueId: string): Promise<string | null> {
+    try {
+      const query = `query {
+        node(id: "${projectId}") {
+          ... on ProjectV2 {
+            items(first: 100) {
+              nodes {
+                id
+                content {
+                  ... on Issue {
+                    id
+                  }
+                }
+              }
+            }
+          }
+        }
+      }`;
+      
+      const output = execSync(
+        `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
+        { encoding: 'utf-8', stdio: 'pipe' }
+      );
+      
+      const result = JSON.parse(output);
+      const items = result.data?.node?.items?.nodes || [];
+      const item = items.find((i: { content: { id: string } }) => i.content?.id === issueId);
+      return item?.id || null;
+    } catch (error) {
+      console.error('⚠️  Failed to get project item ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Set date field value for a project item
+   */
+  async setProjectItemDateField(
+    projectId: string,
+    itemId: string,
+    fieldId: string,
+    date: string
+  ): Promise<boolean> {
+    try {
+      const mutation = `mutation {
+        updateProjectV2ItemFieldValue(
+          input: {
+            projectId: "${projectId}"
+            itemId: "${itemId}"
+            fieldId: "${fieldId}"
+            value: {
+              date: "${date}"
+            }
+          }
+        ) {
+          projectV2Item {
+            id
+          }
+        }
+      }`;
+      
+      const output = execSync(
+        `gh api graphql -f query="${mutation.replace(/"/g, '\\"')}"`,
+        { encoding: 'utf-8', stdio: 'pipe' }
+      );
+      
+      const result = JSON.parse(output);
+      return !!result.data?.updateProjectV2ItemFieldValue?.projectV2Item;
+    } catch (error) {
+      console.error('⚠️  Failed to set project date field:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Set GitHub Project date fields (Target and Start) for an issue
+   */
+  async setProjectDateFields(
+    repo: string,
+    projectName: string,
+    issueId: string,
+    targetDate?: string,
+    startDate?: string
+  ): Promise<boolean> {
+    try {
+      // Get project node ID
+      const projectId = await this.getProjectNodeId(repo, projectName);
+      if (!projectId) {
+        console.error(`⚠️  Project "${projectName}" not found`);
+        return false;
+      }
+
+      // Get project item ID
+      const itemId = await this.getProjectItemId(projectId, issueId);
+      if (!itemId) {
+        console.error(`⚠️  Issue not found in project "${projectName}"`);
+        return false;
+      }
+
+      let success = true;
+
+      // Set Target date field if provided
+      if (targetDate) {
+        const targetFieldId = await this.getProjectFieldId(projectId, 'Target');
+        if (targetFieldId) {
+          const result = await this.setProjectItemDateField(projectId, itemId, targetFieldId, targetDate);
+          if (result) {
+            console.log(`   ✅ Set Target date: ${targetDate}`);
+          } else {
+            console.log(`   ⚠️  Failed to set Target date`);
+            success = false;
+          }
+        } else {
+          console.log(`   ⚠️  Target field not found in project`);
+        }
+      }
+
+      // Set Start date field if provided
+      if (startDate) {
+        const startFieldId = await this.getProjectFieldId(projectId, 'Start');
+        if (startFieldId) {
+          const result = await this.setProjectItemDateField(projectId, itemId, startFieldId, startDate);
+          if (result) {
+            console.log(`   ✅ Set Start date: ${startDate}`);
+          } else {
+            console.log(`   ⚠️  Failed to set Start date`);
+            success = false;
+          }
+        } else {
+          console.log(`   ⚠️  Start field not found in project`);
+        }
+      }
+
+      return success;
+    } catch (error) {
+      console.error('⚠️  Failed to set project date fields:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get GitHub Project name from issue ID
+   */
+  async getIssueProject(repo: string, issueId: string): Promise<string | null> {
+    try {
+      const [owner, name] = repo.split('/');
+      const query = `query {
+        repository(owner: "${owner}", name: "${name}") {
+          issue(id: "${issueId}") {
+            projectItems(first: 10) {
+              nodes {
+                project {
+                  ... on ProjectV2 {
+                    title
+                  }
+                }
+              }
+            }
+          }
+        }
+      }`;
+      
+      const output = execSync(
+        `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
+        { encoding: 'utf-8', stdio: 'pipe' }
+      );
+      
+      const result = JSON.parse(output);
+      const projectItems = result.data?.repository?.issue?.projectItems?.nodes || [];
+      if (projectItems.length > 0) {
+        return projectItems[0].project?.title || null;
+      }
+      return null;
+    } catch (error) {
+      console.error('⚠️  Failed to get issue project:', error);
+      return null;
+    }
+  }
 }
 

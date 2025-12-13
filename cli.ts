@@ -19,7 +19,7 @@ const program = new Command();
 program
   .name('lg')
   .description('Linear + GitHub Integration CLI - Create GitHub issues with Linear sync')
-  .version('1.0.3');
+  .version('1.1.0');
 
 program
   .command('create-parent')
