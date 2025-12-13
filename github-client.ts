@@ -166,28 +166,67 @@ export class GitHubClientWrapper {
 
   /**
    * Get project node ID by project name
+   * Supports both Organization and User accounts
    */
   async getProjectNodeId(repo: string, projectName: string): Promise<string | null> {
     try {
       const [owner] = repo.split('/');
-      const query = `query {
-        organization(login: "${owner}") {
-          projectsV2(first: 50) {
-            nodes {
-              id
-              title
+      let projects: Array<{ id: string; title: string }> = [];
+      
+      // First try Organization
+      try {
+        const orgQuery = `query {
+          organization(login: "${owner}") {
+            projectsV2(first: 50) {
+              nodes {
+                id
+                title
+              }
             }
           }
+        }`;
+        
+        const orgOutput = execSync(
+          `gh api graphql -f query="${orgQuery.replace(/"/g, '\\"')}"`,
+          { encoding: 'utf-8', stdio: 'pipe' }
+        );
+        
+        const orgResult = JSON.parse(orgOutput);
+        if (orgResult.data?.organization) {
+          projects = orgResult.data.organization.projectsV2?.nodes || [];
         }
-      }`;
+      } catch (orgError) {
+        // Organization not found or error occurred, will try User below
+      }
       
-      const output = execSync(
-        `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
-        { encoding: 'utf-8', stdio: 'pipe' }
-      );
+      // If no projects found from Organization, try User
+      if (projects.length === 0) {
+        try {
+          const userQuery = `query {
+            user(login: "${owner}") {
+              projectsV2(first: 50) {
+                nodes {
+                  id
+                  title
+                }
+              }
+            }
+          }`;
+          
+          const userOutput = execSync(
+            `gh api graphql -f query="${userQuery.replace(/"/g, '\\"')}"`,
+            { encoding: 'utf-8', stdio: 'pipe' }
+          );
+          
+          const userResult = JSON.parse(userOutput);
+          if (userResult.data?.user) {
+            projects = userResult.data.user.projectsV2?.nodes || [];
+          }
+        } catch (userError) {
+          // User not found or error occurred
+        }
+      }
       
-      const result = JSON.parse(output);
-      const projects = result.data?.organization?.projectsV2?.nodes || [];
       const project = projects.find((p: { title: string }) => p.title === projectName);
       return project?.id || null;
     } catch (error) {

@@ -25,3 +25,9 @@ Thumbs.db
 *.tmp
 *.temp
 *~
+
+# cursor
+.cursor/
+
+# claude
+.claude/
