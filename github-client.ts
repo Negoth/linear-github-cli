@@ -239,6 +239,8 @@ export class GitHubClientWrapper {
    * Get project field ID by field name
    */
   async getProjectFieldId(projectId: string, fieldName: string): Promise<string | null> {
+    const debug = process.env.DEBUG === 'true';
+    
     try {
       const query = `query {
         node(id: "${projectId}") {
@@ -255,56 +257,190 @@ export class GitHubClientWrapper {
         }
       }`;
       
+      if (debug) {
+        console.log(`   [DEBUG] Looking up field "${fieldName}" in project ${projectId}`);
+      }
+      
       const output = execSync(
         `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
         { encoding: 'utf-8', stdio: 'pipe' }
       );
       
       const result = JSON.parse(output);
+      
+      if (debug) {
+        console.log(`   [DEBUG] Fields query response:`, JSON.stringify(result, null, 2));
+      }
+      
+      if (result.errors) {
+        console.error(`   ⚠️  GraphQL errors when fetching fields:`, result.errors);
+        return null;
+      }
+      
       const fields = result.data?.node?.fields?.nodes || [];
       const field = fields.find((f: { name: string }) => f.name === fieldName);
-      return field?.id || null;
-    } catch (error) {
-      console.error(`⚠️  Failed to get field ID for "${fieldName}":`, error);
+      
+      if (field) {
+        if (debug) {
+          console.log(`   [DEBUG] Found field "${fieldName}" with ID: ${field.id}`);
+        }
+        return field.id;
+      } else {
+        if (debug) {
+          const availableFields = fields.map((f: { name: string }) => f.name);
+          console.log(`   [DEBUG] Field "${fieldName}" not found. Available fields:`, availableFields);
+        }
+        return null;
+      }
+    } catch (error: any) {
+      const errorMessage = error.message || error.stderr || String(error);
+      console.error(`   ⚠️  Failed to get field ID for "${fieldName}": ${errorMessage}`);
+      if (debug) {
+        console.error(`   [DEBUG] Full error:`, error);
+      }
       return null;
     }
   }
 
   /**
-   * Get project item ID by issue ID
+   * Get project item ID by issue ID with retry and pagination support
    */
-  async getProjectItemId(projectId: string, issueId: string): Promise<string | null> {
-    try {
-      const query = `query {
-        node(id: "${projectId}") {
-          ... on ProjectV2 {
-            items(first: 100) {
-              nodes {
-                id
-                content {
-                  ... on Issue {
-                    id
+  async getProjectItemId(projectId: string, issueId: string, maxRetries = 3): Promise<string | null> {
+    const debug = process.env.DEBUG === 'true';
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        let cursor: string | null = null;
+        let hasNextPage = true;
+        let allItems: Array<{ id: string; content: { id: string } }> = [];
+        
+        // Paginate through all items
+        while (hasNextPage) {
+          const query = cursor
+            ? `query {
+                node(id: "${projectId}") {
+                  ... on ProjectV2 {
+                    items(first: 100, after: "${cursor}") {
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                      nodes {
+                        id
+                        content {
+                          ... on Issue {
+                            id
+                          }
+                        }
+                      }
+                    }
                   }
                 }
-              }
+              }`
+            : `query {
+                node(id: "${projectId}") {
+                  ... on ProjectV2 {
+                    items(first: 100) {
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                      nodes {
+                        id
+                        content {
+                          ... on Issue {
+                            id
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+          
+          if (debug) {
+            console.log(`   [DEBUG] Attempt ${attempt}/${maxRetries}: Querying project items${cursor ? ` (cursor: ${cursor})` : ''}`);
+          }
+          
+          const output = execSync(
+            `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
+            { encoding: 'utf-8', stdio: 'pipe' }
+          );
+          
+          const result = JSON.parse(output);
+          
+          if (debug) {
+            console.log(`   [DEBUG] GraphQL response:`, JSON.stringify(result, null, 2));
+          }
+          
+          if (result.errors) {
+            console.error(`   ⚠️  GraphQL errors on attempt ${attempt}:`, result.errors);
+            throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+          }
+          
+          const itemsData = result.data?.node?.items;
+          if (!itemsData) {
+            console.error(`   ⚠️  Invalid response structure on attempt ${attempt}`);
+            if (debug) {
+              console.error(`   [DEBUG] Full response:`, JSON.stringify(result, null, 2));
             }
+            throw new Error('Invalid response structure');
+          }
+          
+          const items = itemsData.nodes || [];
+          allItems = allItems.concat(items);
+          
+          hasNextPage = itemsData.pageInfo?.hasNextPage || false;
+          cursor = itemsData.pageInfo?.endCursor || null;
+          
+          if (debug) {
+            console.log(`   [DEBUG] Found ${items.length} items in this page (total: ${allItems.length}), hasNextPage: ${hasNextPage}`);
           }
         }
-      }`;
-      
-      const output = execSync(
-        `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
-        { encoding: 'utf-8', stdio: 'pipe' }
-      );
-      
-      const result = JSON.parse(output);
-      const items = result.data?.node?.items?.nodes || [];
-      const item = items.find((i: { content: { id: string } }) => i.content?.id === issueId);
-      return item?.id || null;
-    } catch (error) {
-      console.error('⚠️  Failed to get project item ID:', error);
-      return null;
+        
+        // Search for the item with matching issue ID
+        const item = allItems.find((i: { content: { id: string } }) => i.content?.id === issueId);
+        
+        if (item) {
+          if (attempt > 1) {
+            console.log(`   ✅ Found project item after ${attempt} attempt(s)`);
+          }
+          if (debug) {
+            console.log(`   [DEBUG] Found item ID: ${item.id} for issue ID: ${issueId}`);
+          }
+          return item.id;
+        }
+        
+        // If not found and not last attempt, wait and retry
+        if (attempt < maxRetries) {
+          const waitTime = attempt * 1000; // 1s, 2s, 3s
+          console.log(`   ⏳ Project item not found (searched ${allItems.length} items), retrying in ${waitTime}ms... (attempt ${attempt}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          console.error(`   ⚠️  Project item not found after ${maxRetries} attempts (searched ${allItems.length} total items)`);
+          if (debug) {
+            console.error(`   [DEBUG] Issue ID being searched: ${issueId}`);
+            console.error(`   [DEBUG] Available issue IDs in project:`, allItems.map((i: { content: { id: string } }) => i.content?.id).slice(0, 10));
+          }
+        }
+      } catch (error: any) {
+        const errorMessage = error.message || error.stderr || String(error);
+        console.error(`   ⚠️  Failed to get project item ID on attempt ${attempt}/${maxRetries}:`, errorMessage);
+        
+        if (debug) {
+          console.error(`   [DEBUG] Full error:`, error);
+        }
+        
+        // If not last attempt, wait and retry
+        if (attempt < maxRetries) {
+          const waitTime = attempt * 1000;
+          console.log(`   ⏳ Retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
     }
+    
+    return null;
   }
 
   /**
@@ -316,6 +452,8 @@ export class GitHubClientWrapper {
     fieldId: string,
     date: string
   ): Promise<boolean> {
+    const debug = process.env.DEBUG === 'true';
+    
     try {
       const mutation = `mutation {
         updateProjectV2ItemFieldValue(
@@ -334,15 +472,43 @@ export class GitHubClientWrapper {
         }
       }`;
       
+      if (debug) {
+        console.log(`   [DEBUG] Executing mutation:`);
+        console.log(`   [DEBUG]   Project ID: ${projectId}`);
+        console.log(`   [DEBUG]   Item ID: ${itemId}`);
+        console.log(`   [DEBUG]   Field ID: ${fieldId}`);
+        console.log(`   [DEBUG]   Date: ${date}`);
+      }
+      
       const output = execSync(
         `gh api graphql -f query="${mutation.replace(/"/g, '\\"')}"`,
         { encoding: 'utf-8', stdio: 'pipe' }
       );
       
       const result = JSON.parse(output);
-      return !!result.data?.updateProjectV2ItemFieldValue?.projectV2Item;
-    } catch (error) {
-      console.error('⚠️  Failed to set project date field:', error);
+      
+      if (debug) {
+        console.log(`   [DEBUG] Mutation response:`, JSON.stringify(result, null, 2));
+      }
+      
+      if (result.errors) {
+        console.error(`   ⚠️  GraphQL errors:`, result.errors);
+        return false;
+      }
+      
+      const success = !!result.data?.updateProjectV2ItemFieldValue?.projectV2Item;
+      if (!success && debug) {
+        console.error(`   [DEBUG] Mutation returned no projectV2Item in response`);
+      }
+      
+      return success;
+    } catch (error: any) {
+      const errorMessage = error.message || error.stderr || String(error);
+      console.error(`   ⚠️  Failed to set project date field: ${errorMessage}`);
+      if (debug) {
+        console.error(`   [DEBUG] Full error:`, error);
+        console.error(`   [DEBUG] Stack trace:`, error.stack);
+      }
       return false;
     }
   }
@@ -357,58 +523,126 @@ export class GitHubClientWrapper {
     targetDate?: string,
     startDate?: string
   ): Promise<boolean> {
+    const debug = process.env.DEBUG === 'true';
+    
     try {
+      if (debug) {
+        console.log(`   [DEBUG] Setting project date fields:`);
+        console.log(`   [DEBUG]   Repo: ${repo}`);
+        console.log(`   [DEBUG]   Project: ${projectName}`);
+        console.log(`   [DEBUG]   Issue ID: ${issueId}`);
+        console.log(`   [DEBUG]   Target date: ${targetDate || 'not set'}`);
+        console.log(`   [DEBUG]   Start date: ${startDate || 'not set'}`);
+      }
+      
       // Get project node ID
+      console.log(`   Looking up project "${projectName}"...`);
       const projectId = await this.getProjectNodeId(repo, projectName);
       if (!projectId) {
-        console.error(`⚠️  Project "${projectName}" not found`);
+        console.error(`   ⚠️  Project "${projectName}" not found`);
+        if (debug) {
+          console.error(`   [DEBUG] Tried to find project in repo: ${repo}`);
+        }
         return false;
       }
+      
+      if (debug) {
+        console.log(`   [DEBUG] Found project ID: ${projectId}`);
+      }
 
-      // Get project item ID
+      // Get project item ID (with retry mechanism)
+      console.log(`   Looking up issue in project...`);
       const itemId = await this.getProjectItemId(projectId, issueId);
       if (!itemId) {
-        console.error(`⚠️  Issue not found in project "${projectName}"`);
+        console.error(`   ⚠️  Issue not found in project "${projectName}"`);
+        console.error(`   ⚠️  This may be due to a timing issue. The issue may appear in the project shortly.`);
+        if (debug) {
+          console.error(`   [DEBUG] Project ID: ${projectId}`);
+          console.error(`   [DEBUG] Issue ID: ${issueId}`);
+        }
         return false;
+      }
+      
+      if (debug) {
+        console.log(`   [DEBUG] Found project item ID: ${itemId}`);
       }
 
       let success = true;
+      const results: { target?: boolean; start?: boolean } = {};
 
       // Set Target date field if provided
       if (targetDate) {
+        console.log(`   Setting Target date field...`);
         const targetFieldId = await this.getProjectFieldId(projectId, 'Target');
         if (targetFieldId) {
+          if (debug) {
+            console.log(`   [DEBUG] Target field ID: ${targetFieldId}`);
+          }
           const result = await this.setProjectItemDateField(projectId, itemId, targetFieldId, targetDate);
+          results.target = result;
           if (result) {
             console.log(`   ✅ Set Target date: ${targetDate}`);
           } else {
-            console.log(`   ⚠️  Failed to set Target date`);
+            console.log(`   ⚠️  Failed to set Target date: ${targetDate}`);
+            if (debug) {
+              console.error(`   [DEBUG] Mutation may have failed. Check GraphQL response above.`);
+            }
             success = false;
           }
         } else {
-          console.log(`   ⚠️  Target field not found in project`);
+          console.log(`   ⚠️  Target field not found in project "${projectName}"`);
+          if (debug) {
+            console.error(`   [DEBUG] Make sure the project has a "Target" date field configured.`);
+          }
+          success = false;
         }
       }
 
       // Set Start date field if provided
       if (startDate) {
+        console.log(`   Setting Start date field...`);
         const startFieldId = await this.getProjectFieldId(projectId, 'Start');
         if (startFieldId) {
+          if (debug) {
+            console.log(`   [DEBUG] Start field ID: ${startFieldId}`);
+          }
           const result = await this.setProjectItemDateField(projectId, itemId, startFieldId, startDate);
+          results.start = result;
           if (result) {
             console.log(`   ✅ Set Start date: ${startDate}`);
           } else {
-            console.log(`   ⚠️  Failed to set Start date`);
+            console.log(`   ⚠️  Failed to set Start date: ${startDate}`);
+            if (debug) {
+              console.error(`   [DEBUG] Mutation may have failed. Check GraphQL response above.`);
+            }
             success = false;
           }
         } else {
-          console.log(`   ⚠️  Start field not found in project`);
+          console.log(`   ⚠️  Start field not found in project "${projectName}"`);
+          if (debug) {
+            console.error(`   [DEBUG] Make sure the project has a "Start" date field configured.`);
+          }
+          success = false;
         }
       }
 
+      // Summary
+      if (debug) {
+        console.log(`   [DEBUG] Date field setting results:`, results);
+      }
+      
+      if (!success) {
+        console.log(`   ⚠️  Some date fields failed to set. Check the messages above for details.`);
+      }
+
       return success;
-    } catch (error) {
-      console.error('⚠️  Failed to set project date fields:', error);
+    } catch (error: any) {
+      const errorMessage = error.message || error.stderr || String(error);
+      console.error(`   ⚠️  Failed to set project date fields: ${errorMessage}`);
+      if (debug) {
+        console.error(`   [DEBUG] Full error:`, error);
+        console.error(`   [DEBUG] Stack trace:`, error.stack);
+      }
       return false;
     }
   }

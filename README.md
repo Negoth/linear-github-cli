@@ -180,6 +180,25 @@ Make sure you've set the environment variable:
 export LINEAR_API_KEY="lin_api_..."
 ```
 
+### GitHub Project date fields not being set
+
+If start date or target date fields are not being set in GitHub Projects:
+
+1. **Enable debug mode** to see detailed logs:
+   ```bash
+   DEBUG=true lg parent
+   ```
+
+2. **Check the logs** for:
+   - Whether the project item was found (may require retries due to timing)
+   - Whether the date fields exist in the project
+   - Any GraphQL errors
+
+3. **Common issues**:
+   - The issue may not be indexed in the project yet (the tool will retry automatically)
+   - The project may not have "Target" or "Start" date fields configured
+   - Network or API rate limiting issues
+
 ### "lg: command not found"
 
 If you installed globally, make sure npm's global bin directory is in your PATH:
