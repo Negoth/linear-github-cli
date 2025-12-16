@@ -648,14 +648,14 @@ export class GitHubClientWrapper {
   }
 
   /**
-   * Get GitHub Project name from issue ID
+   * Get GitHub Project name from issue number
    */
-  async getIssueProject(repo: string, issueId: string): Promise<string | null> {
+  async getIssueProject(repo: string, issueNumber: number): Promise<string | null> {
     try {
       const [owner, name] = repo.split('/');
       const query = `query {
         repository(owner: "${owner}", name: "${name}") {
-          issue(id: "${issueId}") {
+          issue(number: ${issueNumber}) {
             projectItems(first: 10) {
               nodes {
                 project {

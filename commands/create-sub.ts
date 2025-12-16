@@ -74,7 +74,7 @@ export async function createSubIssue() {
   if (details.dueDate || details.startDate) {
     console.log('\n📅 Setting GitHub Project date fields...');
     // sub-issueから直接プロジェクト情報を取得（Auto-add sub-issues to projectが有効な場合）
-    const projectName = await githubClient.getIssueProject(repo, subIssue.id);
+    const projectName = await githubClient.getIssueProject(repo, subIssue.number);
     
     if (projectName) {
       await githubClient.setProjectDateFields(
