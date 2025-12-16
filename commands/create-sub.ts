@@ -70,25 +70,6 @@ export async function createSubIssue() {
   console.log(`✅ Sub-Issue #${subIssue.number} created: ${subIssue.url}`);
   console.log(`   Parent: #${parentIssueNumber}`);
 
-  // Set GitHub Project date fields if dates are provided
-  if (details.dueDate || details.startDate) {
-    console.log('\n📅 Setting GitHub Project date fields...');
-    // sub-issueから直接プロジェクト情報を取得（Auto-add sub-issues to projectが有効な場合）
-    const projectName = await githubClient.getIssueProject(repo, subIssue.number);
-    
-    if (projectName) {
-      await githubClient.setProjectDateFields(
-        repo,
-        projectName,
-        subIssue.id,
-        details.dueDate || undefined,
-        details.startDate || undefined
-      );
-    } else {
-      console.log('   ⚠️  Sub-issue has no GitHub Project. Skipping date field setting.');
-    }
-  }
-
   // Step 5: Wait for Linear sync, then update metadata
   console.log('\n⏳ Waiting for Linear sync (5 seconds)...');
   await new Promise(resolve => setTimeout(resolve, 5000));
@@ -156,6 +137,22 @@ export async function createSubIssue() {
         console.log(`   Due date: ${details.dueDate}`);
       }
       console.log('   Status: Will be updated automatically via PR integration');
+
+      // Set GitHub Project date fields if parent project is available and dates are provided
+      if (parentProjectName && (details.dueDate || details.startDate)) {
+        console.log('\n📅 Setting GitHub Project date fields...');
+        // Wait additional time for GitHub Actions to sync project assignment
+        console.log('   ⏳ Waiting for GitHub Actions sync (3 seconds)...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        await githubClient.setProjectDateFields(
+          repo,
+          parentProjectName,
+          subIssue.id,
+          details.dueDate || undefined,
+          details.startDate || undefined
+        );
+      }
     } else {
       console.log('⚠️  Failed to update Linear issue metadata. You can update it manually in Linear.');
     }
