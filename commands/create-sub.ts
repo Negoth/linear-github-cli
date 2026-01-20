@@ -54,15 +54,11 @@ export async function createSubIssue() {
 
   // Step 4: Create sub-issue
   console.log('\n🚀 Creating sub-issue...');
-  const body = details.dueDate
-    ? `Due Date: ${details.dueDate}\n\n${details.description}`
-    : details.description;
-
   const subIssue = await githubClient.createSubIssue({
     repo,
     parentIssueNumber,
     title: details.title,
-    body,
+    body: details.description,
     labels: details.labels,
     assignees: ['@me'],
   });

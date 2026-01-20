@@ -53,14 +53,10 @@ export async function createParentIssue() {
 
   // Step 4: Create GitHub issue
   console.log('\n🚀 Creating GitHub issue...');
-  const body = details.dueDate
-    ? `Due Date: ${details.dueDate}\n\n${details.description}`
-    : details.description;
-
   const issue = await githubClient.createIssue({
     repo,
     title: details.title,
-    body,
+    body: details.description,
     labels: details.labels,
     assignees: ['@me'],
     project: githubProject || undefined,
