@@ -62,7 +62,17 @@ export class GitHubClientWrapper {
       (params.assignees && params.assignees.length > 0 ? `--assignee "${params.assignees.join(',')}" ` : '') +
       (params.project ? `--project "${params.project}" ` : '');
     
-    const output = execSync(command, { encoding: 'utf-8' });
+    let output: string;
+    try {
+      output = execSync(command, { encoding: 'utf-8' });
+    } catch (error: any) {
+      const errorMessage = error?.stderr?.toString().trim() || error?.message || String(error);
+      throw new Error(
+        `Failed to create GitHub issue.\n` +
+        `Reason: ${errorMessage}\n` +
+        `Please review the issue body and try again.`
+      );
+    }
     
     // Parse URL from output: "https://github.com/owner/repo/issues/123"
     const urlMatch = output.match(/https:\/\/github\.com\/[^\/]+\/[^\/]+\/issues\/(\d+)/);
