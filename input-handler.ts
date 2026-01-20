@@ -167,9 +167,13 @@ export class InputHandler {
         validate: (input: string) => input.length > 0 || 'Title is required',
       },
       {
-        type: 'editor',
-        name: 'description',
-        message: 'Issue description (opens editor):',
+        type: 'input',
+        name: 'descriptionAction',
+        message: 'Body [(e) to launch vim, enter to skip]:',
+        validate: (input: string) => {
+          const value = input.trim().toLowerCase();
+          return value === '' || value === 'e' || 'Enter "e" to edit or press enter to skip';
+        },
       },
       {
         type: 'input',
@@ -202,9 +206,21 @@ export class InputHandler {
       },
     ]);
 
+    let description = '';
+    if (answers.descriptionAction.trim().toLowerCase() === 'e') {
+      const { description: editedDescription } = await inquirer.prompt([
+        {
+          type: 'editor',
+          name: 'description',
+          message: 'Issue description:',
+        },
+      ]);
+      description = editedDescription || '';
+    }
+
     return {
       title: answers.title,
-      description: answers.description || '',
+      description,
       dueDate: answers.dueDate || '',
       startDate: answers.startDate || '',
       labels: answers.labels || [],
