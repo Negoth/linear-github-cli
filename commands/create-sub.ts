@@ -67,17 +67,35 @@ export async function createSubIssue() {
   console.log(`   Parent: #${parentIssueNumber}`);
 
   // Step 5: Wait for Linear sync, then update metadata
-  console.log('\n⏳ Waiting for Linear sync (5 seconds)...');
-  await new Promise(resolve => setTimeout(resolve, 5000));
+  const linearSyncDelayMs = 500;
+  const linearSyncMaxWaitMs = 10000;
+  const linearSyncMaxAttempts = Math.floor(linearSyncMaxWaitMs / linearSyncDelayMs) + 1;
 
-  const linearIssueId = await linearClient.findIssueByGitHubUrl(subIssue.url);
+  console.log('\n⏳ Waiting for Linear sync (polling for up to 10s)...');
+  const linearIssueId = await linearClient.waitForIssueByGitHubUrl(subIssue.url, {
+    maxAttempts: linearSyncMaxAttempts,
+    delayMs: linearSyncDelayMs,
+    onRetry: (attempt, maxAttempts, delayMs) => {
+      if (attempt % 5 === 0) {
+        console.log(`   ⏳ Linear issue not found yet, retrying in ${delayMs}ms... (${attempt}/${maxAttempts - 1})`);
+      }
+    },
+  });
   if (linearIssueId) {
     console.log('✅ Found Linear issue, updating metadata...');
     
     // Get parent issue to check if it has a project
     const parentIssueUrl = `https://github.com/${repo}/issues/${parentIssueNumber}`;
     console.log(`   Looking for parent issue's Linear project...`);
-    const parentLinearIssueId = await linearClient.findIssueByGitHubUrl(parentIssueUrl);
+    const parentLinearIssueId = await linearClient.waitForIssueByGitHubUrl(parentIssueUrl, {
+      maxAttempts: 6,
+      delayMs: 500,
+      onRetry: (attempt, maxAttempts, delayMs) => {
+        if (attempt % 3 === 0) {
+          console.log(`   ⏳ Parent Linear issue not found yet, retrying in ${delayMs}ms... (${attempt}/${maxAttempts - 1})`);
+        }
+      },
+    });
     
     let linearProjectId: string | null = null;
     let parentProjectName: string | null = null;
