@@ -94,9 +94,9 @@ lg parent
 
 Follow the interactive prompts:
 1. Select repository from dropdown
-2. Enter issue title
+2. Enter issue title (required)
 3. Enter description (opens in editor)
-4. Optionally set due date (YYYY-MM-DD)
+4. Set due date (YYYY-MM-DD, required)
 5. Select GitHub labels (checkboxes). Choices: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `research`
 6. Optionally select GitHub project
 7. Optionally select Linear project (after sync)
@@ -112,9 +112,9 @@ lg sub
 Follow the interactive prompts:
 1. Select repository from dropdown
 2. Select parent issue from list
-3. Enter sub-issue title
+3. Enter sub-issue title (required)
 4. Enter description (opens in editor)
-5. Optionally set due date (YYYY-MM-DD)
+5. Set due date (YYYY-MM-DD, required)
 6. Select GitHub labels (same predefined list as above)
 7. Optionally select Linear project (after sync)
 
@@ -132,7 +132,7 @@ lg create-sub --help
 - ✅ **Project autocomplete**: Select GitHub and Linear projects from dropdowns
 - ✅ **Parent issue selection**: Browse and select parent issues when creating sub-issues
 - ✅ **GitHub label sync**: Multi-select from the seven standard labels (feat, fix, chore, docs, refactor, test, research); selections are mirrored to matching Linear team labels
-- ✅ **Due date input**: Optional date picker with validation
+- ✅ **Due date input**: Required date picker with validation
 - ✅ **Automatic Linear sync**: Waits for Linear sync and updates metadata (due date, project, labels)
 - ✅ **Parent-child relationships**: Automatically links sub-issues to parent issues
 - ✅ **Status automation**: Issues start in Linear backlog; rely on the Linear × GitHub PR automation for status changes

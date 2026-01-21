@@ -163,7 +163,7 @@ export class InputHandler {
       {
         type: 'input',
         name: 'title',
-        message: 'Issue title:',
+        message: 'Issue title (required):',
         validate: (input: string) => input.length > 0 || 'Title is required',
       },
       {
@@ -188,9 +188,9 @@ export class InputHandler {
       {
         type: 'input',
         name: 'dueDate',
-        message: 'Due date (YYYY-MM-DD):',
+        message: 'Due date (YYYY-MM-DD, required):',
         validate: (input: string) => {
-          if (!input) return true; // Optional
+          if (!input) return 'Due date is required';
           const date = new Date(input);
           return !isNaN(date.getTime()) || 'Invalid date format';
         },
