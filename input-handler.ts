@@ -3,6 +3,19 @@ import inquirer from 'inquirer';
 import { GitHubClientWrapper } from './github-client';
 import { LinearClientWrapper } from './linear-client';
 
+const isValidDateYmd = (input: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input)) return false;
+
+  const [year, month, day] = input.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+};
+
 export class InputHandler {
   constructor(
     private linearClient: LinearClientWrapper,
@@ -181,8 +194,7 @@ export class InputHandler {
         message: 'Start date (YYYY-MM-DD, optional):',
         validate: (input: string) => {
           if (!input) return true; // Optional
-          const date = new Date(input);
-          return !isNaN(date.getTime()) || 'Invalid date format';
+          return isValidDateYmd(input) || 'Invalid date format';
         },
       },
       {
@@ -191,8 +203,7 @@ export class InputHandler {
         message: 'Due date (YYYY-MM-DD, required):',
         validate: (input: string) => {
           if (!input) return 'Due date is required';
-          const date = new Date(input);
-          return !isNaN(date.getTime()) || 'Invalid date format';
+          return isValidDateYmd(input) || 'Invalid date format';
         },
       },
       {
