@@ -198,11 +198,8 @@ export class InputHandler {
       {
         type: 'checkbox',
         name: 'labels',
-        message: 'Select GitHub labels (at least one required):',
+        message: 'Select GitHub labels (optional):',
         choices: labelChoices,
-        validate: (input: string[]) => {
-          return input.length > 0 || 'At least one label is required';
-        },
       },
     ]);
 

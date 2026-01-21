@@ -12,6 +12,18 @@ export class GitHubClientWrapper {
     }
   }
 
+  async getCurrentUsername(): Promise<string | null> {
+    try {
+      const output = execSync('gh api user -q .login', {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+      }).trim();
+      return output || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   async getRepositories(): Promise<Array<{ owner: string; name: string; fullName: string }>> {
     // Use gh CLI to get accessible repos
     const output = execSync('gh repo list --limit 100 --json nameWithOwner', {

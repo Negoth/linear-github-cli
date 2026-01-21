@@ -1,5 +1,5 @@
 import inquirer from 'inquirer';
-import { checkUnpushedCommitsOnCurrentBranch, createGitBranch, generateBranchName, selectBranchPrefix } from '../branch-utils';
+import { checkUnpushedCommitsOnCurrentBranch, createGitBranch, generateBranchName } from '../branch-utils';
 import { GitHubClientWrapper } from '../github-client';
 import { InputHandler } from '../input-handler';
 import { LinearClientWrapper } from '../linear-client';
@@ -190,17 +190,23 @@ export async function createSubIssue() {
           console.log(`   Linear issue ID: ${linearIssueId}`);
           console.log(`   GitHub issue #${subIssue.number}`);
         } else {
-          const branchPrefix = await selectBranchPrefix(details.labels);
-          if (branchPrefix) {
-            const branchName = generateBranchName(branchPrefix, linearIssueIdentifier, details.title);
-            const success = await createGitBranch(branchName);
-            if (success) {
-              console.log(`✅ Branch created: ${branchName}`);
-              console.log(`   Linear issue ID: ${linearIssueIdentifier}`);
-              console.log(`   GitHub issue #${subIssue.number}`);
-            }
-          } else {
-            console.log('⚠️  No suitable label found for branch prefix. Branch creation skipped.');
+          let branchOwner = await githubClient.getCurrentUsername();
+          if (!branchOwner) {
+            const { ownerInput } = await inquirer.prompt([
+              {
+                type: 'input',
+                name: 'ownerInput',
+                message: 'Branch username for naming (e.g., your GitHub login):',
+                validate: (input: string) => input.trim().length > 0 || 'Username is required',
+              },
+            ]);
+            branchOwner = ownerInput.trim();
+          }
+
+          const branchName = generateBranchName(branchOwner ?? 'user', linearIssueIdentifier, details.title);
+          const success = await createGitBranch(branchName);
+          if (success) {
+            console.log(`✅ Branch created: ${branchName}`);
             console.log(`   Linear issue ID: ${linearIssueIdentifier}`);
             console.log(`   GitHub issue #${subIssue.number}`);
           }

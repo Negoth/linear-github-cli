@@ -98,11 +98,11 @@ prdf
 
 ```bash
 # 1. Create branch and commit
-git switch -c feat/LEA-123-task
+git switch -c username/LEA-123-task
 lgcmf  # or manual commit
 
 # 2. Push immediately (important!)
-git push -u origin feat/LEA-123-task
+git push -u origin username/LEA-123-task
 
 # 3. Create draft PR (prdf function will verify no unpushed commits)
 prdf

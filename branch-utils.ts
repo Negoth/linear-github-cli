@@ -1,29 +1,8 @@
 import { execSync } from 'child_process';
-import inquirer from 'inquirer';
-
 /**
  * Valid branch prefix types (must match commit_typed.sh)
  */
 const VALID_BRANCH_PREFIXES = ['feat', 'fix', 'chore', 'docs', 'refactor', 'test', 'research'];
-
-/**
- * Maps GitHub labels to branch prefix types
- * Since GitHub labels are already updated to match the standard list,
- * labels should directly map to branch prefixes.
- * @param label - GitHub label name (should be one of: feat, fix, chore, docs, refactor, test, research)
- * @returns Branch prefix (same as label if valid, otherwise returns label as-is)
- */
-function mapLabelToBranchPrefix(label: string): string {
-  const labelLower = label.toLowerCase();
-  
-  // If label is already a valid branch prefix, return it as-is
-  if (VALID_BRANCH_PREFIXES.includes(labelLower)) {
-    return labelLower;
-  }
-  
-  // Fallback: return label as-is (shouldn't happen if labels are properly configured)
-  return labelLower;
-}
 
 /**
  * Sanitizes a title string to be used as part of a git branch name
@@ -65,98 +44,55 @@ export function sanitizeBranchName(title: string): string {
 }
 
 /**
- * Standard branch prefix options when no labels are available
- */
-const STANDARD_PREFIXES = [
-  { name: 'feat', value: 'feat' },
-  { name: 'fix', value: 'fix' },
-  { name: 'chore', value: 'chore' },
-  { name: 'docs', value: 'docs' },
-  { name: 'refactor', value: 'refactor' },
-  { name: 'test', value: 'test' },
-  { name: 'research', value: 'research' },
-];
-
-/**
- * Selects a branch prefix from GitHub labels
- * - If no labels: prompts user to select from standard prefixes
- * - If one label: maps and returns branch prefix
- * - If multiple labels: prompts user to select one
+ * Sanitizes a branch owner (username) to be used in a git branch name.
+ * - Converts to lowercase
+ * - Removes special characters (keeps alphanumeric and hyphens)
+ * - Collapses multiple consecutive hyphens
+ * - Removes leading/trailing hyphens
  * 
- * @param labels - Array of GitHub label names
- * @returns Branch prefix string or null if user cancels
+ * @param owner - The branch owner to sanitize
+ * @returns Sanitized branch owner portion
  */
-export async function selectBranchPrefix(labels: string[]): Promise<string | null> {
-  // Map all labels to branch prefixes
-  const mappedPrefixes = labels && labels.length > 0
-    ? labels.map(label => ({
-        label,
-        prefix: mapLabelToBranchPrefix(label),
-      }))
-    : [];
-  
-  // If no labels: prompt user to select from standard prefixes
-  if (mappedPrefixes.length === 0) {
-    const { selectedPrefix } = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'selectedPrefix',
-        message: 'Select branch prefix (no labels selected):',
-        choices: STANDARD_PREFIXES,
-      },
-    ]);
-    return selectedPrefix;
+function sanitizeBranchOwner(owner: string): string {
+  if (!owner || owner.trim().length === 0) {
+    return '';
   }
   
-  // If only one label, return its mapped prefix
-  if (mappedPrefixes.length === 1) {
-    return mappedPrefixes[0].prefix;
-  }
+  let sanitized = owner.toLowerCase().replace(/[^a-z0-9-]/g, '');
+  sanitized = sanitized.replace(/-+/g, '-');
+  sanitized = sanitized.replace(/^-+|-+$/g, '');
   
-  // Multiple labels: prompt user to select
-  const choices = mappedPrefixes.map(({ label, prefix }) => ({
-    name: `${label} → ${prefix}`,
-    value: prefix,
-  }));
-  
-  const { selectedPrefix } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'selectedPrefix',
-      message: 'Select branch prefix (multiple labels selected):',
-      choices,
-    },
-  ]);
-  
-  return selectedPrefix;
+  return sanitized;
 }
 
 /**
- * Generates a branch name from prefix, Linear ID, and title
- * Format: prefix/LinearID-sanitized-title
+ * Generates a branch name from owner, Linear ID, and title
+ * Format: owner/LinearID-sanitized-title
  * 
- * @param prefix - Branch prefix (e.g., 'feat', 'docs')
+ * @param owner - Branch owner (e.g., GitHub username)
  * @param linearId - Linear issue ID (e.g., 'LEA-123')
  * @param title - Issue title to sanitize
  * @returns Full branch name
  */
-export function generateBranchName(prefix: string, linearId: string, title: string): string {
+export function generateBranchName(owner: string, linearId: string, title: string): string {
+  const sanitizedOwner = sanitizeBranchOwner(owner);
   const sanitizedTitle = sanitizeBranchName(title);
+  const ownerSegment = sanitizedOwner || 'user';
   
   if (!sanitizedTitle) {
-    // If title is empty after sanitization, just use prefix and ID
-    return `${prefix}/${linearId}`;
+    // If title is empty after sanitization, just use owner and ID
+    return `${ownerSegment}/${linearId}`;
   }
   
-  return `${prefix}/${linearId}-${sanitizedTitle}`;
+  return `${ownerSegment}/${linearId}-${sanitizedTitle}`;
 }
 
 /**
  * Extracts Linear issue ID from a branch name
- * - Matches pattern: prefix/LEA-123-title or prefix/LEA-123
+ * - Matches pattern: owner/LEA-123-title or owner/LEA-123
  * - Uses regex to find Linear issue ID format: [A-Z]+-\d+
  * 
- * @param branchName - Branch name (e.g., 'feat/LEA-123-implement-login')
+ * @param branchName - Branch name (e.g., 'negoth/LEA-123-implement-login')
  * @returns Linear issue ID (e.g., 'LEA-123') or null if not found
  */
 export function extractLinearIssueId(branchName: string): string | null {
@@ -173,20 +109,19 @@ export function extractLinearIssueId(branchName: string): string | null {
  * Extracts branch prefix (commit type) from a branch name
  * - Extracts the part before the first '/' (e.g., 'research' from 'research/LEA-75-probit-model')
  * - Validates against VALID_BRANCH_PREFIXES
- * - Returns 'feat' as default if prefix is not found or invalid
  * 
  * @param branchName - Branch name (e.g., 'research/LEA-75-probit-model')
- * @returns Branch prefix (e.g., 'research') or 'feat' as default
+ * @returns Branch prefix (e.g., 'research') or null if not found/invalid
  */
-export function extractBranchPrefix(branchName: string): string {
+export function extractBranchPrefix(branchName: string): string | null {
   if (!branchName || branchName.trim().length === 0) {
-    return 'feat';
+    return null;
   }
   
   // Extract prefix before first '/'
   const parts = branchName.split('/');
   if (parts.length === 0 || !parts[0]) {
-    return 'feat';
+    return null;
   }
   
   const prefix = parts[0].toLowerCase();
@@ -196,8 +131,7 @@ export function extractBranchPrefix(branchName: string): string {
     return prefix;
   }
   
-  // Return 'feat' as default if prefix is invalid
-  return 'feat';
+  return null;
 }
 
 /**
