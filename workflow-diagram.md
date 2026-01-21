@@ -168,9 +168,9 @@ flowchart TD
     
     WORK_SINGLE[Issue #123<br/>Start Work]
     
-    WORK_SUB1 --> |"git switch -c<br/>feat/LEA-124"| BRANCH1
-    WORK_SUB2 --> |"git switch -c<br/>feat/LEA-125"| BRANCH2
-    WORK_SINGLE --> |"git switch -c<br/>feat/LEA-123"| BRANCH3
+    WORK_SUB1 --> |"git switch -c<br/>username/LEA-124"| BRANCH1
+    WORK_SUB2 --> |"git switch -c<br/>username/LEA-125"| BRANCH2
+    WORK_SINGLE --> |"git switch -c<br/>username/LEA-123"| BRANCH3
     
     BRANCH1 --> DRAFT_PR1["Create Draft PR<br/>gh pr create --draft --fill<br/>Title: LEA-124 ...<br/>Body: solve: #124"]
     BRANCH2 --> DRAFT_PR2["Create Draft PR<br/>gh pr create --draft --fill<br/>Title: LEA-125 ...<br/>Body: solve: #125"]
@@ -338,11 +338,11 @@ lg create-sub
 
 ```bash
 # Start work on Sub-Issue #124
-git switch -c feat/LEA-124-graphql-basics
+git switch -c username/LEA-124-graphql-basics
 
 # Commit empty commit or initial changes
 git commit --allow-empty -m "feat: LEA-124 GraphQL Basics" -m "solve: #124"
-git push origin feat/LEA-124-graphql-basics
+git push origin username/LEA-124-graphql-basics
 
 # Create draft PR
 gh pr create --draft --fill
@@ -523,7 +523,7 @@ Parent Issue: Small task
 
 ```bash
 # 1. Create draft PR immediately after branch creation
-git switch -c feat/LEA-124-task
+git switch -c username/LEA-124-task
 git commit --allow-empty -m "feat: LEA-124 Task" -m "solve: #124"
 git push
 gh pr create --draft --fill

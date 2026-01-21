@@ -80,7 +80,7 @@ style: lint/format
 ## Workflow and Etiquette
 
 - Follow conventional commits per @CLAUDE.md.
-- Use issue-based branch names (e.g., `feat/LEA-123-short-title`).
+- Use issue-based branch names (e.g., `username/LEA-123-short-title`).
 - Keep PRs small; draft early when possible.
 - If you touch UX or prompts, validate flows in both parent and sub commands.
 

@@ -301,7 +301,7 @@ gh prms      # Merge with squash and delete branch
 ### Workflow Overview
 
 1. **Create issue** - Use `lg parent/sub` command
-2. **Create branch** - Include issue number (e.g., `feat/LEA-123-task`)
+2. **Create branch** - Include issue number (e.g., `username/LEA-123-task`)
 3. **Create draft PR** - Right after branch creation, before work begins
    - Include Linear issue ID in title (copy with `Cmd + .` in Linear)
    - Include `solve: #123` or `Closes #123` in body

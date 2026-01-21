@@ -121,19 +121,19 @@ lg parent/sub
 
 # Automatically switch to created branch
 # Create branch (include issue number) unless automatically generatedue number
-# git switch -c feat/LEA-123-implement-login
+# git switch -c username/LEA-123-implement-login
 
 # === 1. Create Draft PR ===
 # Option A: Use lgcmf command (automatically generates commit message from branch name)
 lgcmf
-git push -u origin feat/LEA-123-implement-login # or gpsup
+git push -u origin username/LEA-123-implement-login # or gpsup
 gh pr create --draft --fill
 # → Linear: Todo
 
 # Option B: Manual commit (alternative to lgcmf)
 # For empty commit: git commit --allow-empty -m "feat: LEA-123 Implement login feature" -m "solve: #123"
 # For commit with changes: git add . && gcfeat "LEA-123 Implement login feature" "solve: #123"
-# git push -u origin feat/LEA-123-implement-login
+# git push -u origin username/LEA-123-implement-login
 # gh pr create --draft --fill
 
 # Option C: Use prdf function (recommended to avoid unpushed commits in PR body)
@@ -218,13 +218,10 @@ Configure Linear's GitHub integration:
 
 Include issue numbers in branch names for easy reference:
 
-- `feat/LEA-123-implement-login`
-- `fix/LEA-456-bug-fix`
-- `docs/LEA-789-update-readme`
-- `chore/LEA-101-update-dependencies`
-- `refactor/LEA-202-restructure-code`
-- `test/LEA-303-add-unit-tests`
-- `research/LEA-404-data-analysis`
+- `username/LEA-123-implement-login`
+- `username/LEA-456-bug-fix`
+- `username/LEA-789-update-readme`
+- `username/LEA-101-update-dependencies`
 
 ## PR Title and Body Format
 
@@ -390,13 +387,13 @@ The `lgcmf` command automatically creates the first commit with proper message f
 
 ```bash
 # After creating branch with Linear issue ID
-git switch -c feat/LEA-123-implement-login
+git switch -c username/LEA-123-implement-login
 lgcmf  # Automatically creates commit with proper format
-git push -u origin feat/LEA-123-implement-login
+git push -u origin username/LEA-123-implement-login
 ```
 
 **Requirements:**
-- Branch name must include Linear issue ID (e.g., `feat/LEA-123-title`)
+- Branch name must include Linear issue ID (e.g., `username/LEA-123-title`)
 - Linear issue must be linked to a GitHub issue
 - `.env` file with `LINEAR_API_KEY` must be configured
 
@@ -536,7 +533,7 @@ gh prms      # Merge with squash and delete branch
 
 **Workflow:**
 1. Create issue → `lg parent/sub`
-2. Create branch (automatic) → unless, `git switch -c feat/LEA-123-task`
+2. Create branch (automatic) → unless, `git switch -c username/LEA-123-task`
 3. First commit → `lgcmf` (auto-generates commit message) or manual commit
 4. Push commits → `git push` (important: push before creating PR)
 5. Draft PR → `prdf` (safe wrapper function) or `gh pr create --draft --fill` (Linear: Todo)

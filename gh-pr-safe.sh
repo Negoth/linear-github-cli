@@ -74,7 +74,7 @@ if [[ "$FIRST_COMMIT_MSG" =~ ^[^:]+:\ (.+)$ ]]; then
   # Extract title part after "type: " (e.g., "feat: LEA-123 title" -> "LEA-123 title")
   PR_TITLE="${BASH_REMATCH[1]}"
 else
-  # Fallback: use branch name without prefix (e.g., "fix/LEA-123-title" -> "LEA-123-title")
+  # Fallback: use branch name without prefix (e.g., "username/LEA-123-title" -> "LEA-123-title")
   PR_TITLE="${BRANCH#*/}"  # Remove prefix/ if exists
   if [ "$PR_TITLE" = "$BRANCH" ]; then
     # No / found, use branch name as is

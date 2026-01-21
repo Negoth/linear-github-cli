@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import inquirer from 'inquirer';
 import { extractBranchPrefix, extractLinearIssueId } from '../branch-utils';
 import { LinearClientWrapper } from '../linear-client';
 import { loadEnvFile } from '../env-utils';
@@ -37,13 +38,25 @@ export async function commitFirst() {
       process.exit(1);
     }
 
-    // Step 2: Extract branch prefix and Linear issue ID from branch name
-    const prefix = extractBranchPrefix(branchName);
+    // Step 2: Extract branch prefix (if any) and Linear issue ID from branch name
+    let prefix = extractBranchPrefix(branchName);
     const linearId = extractLinearIssueId(branchName);
     if (!linearId) {
       console.error(`❌ Error: Could not extract Linear issue ID from branch name: ${branchName}`);
-      console.error('   Branch name should follow pattern: prefix/LEA-123-title');
+      console.error('   Branch name should follow pattern: username/LEA-123-title');
       process.exit(1);
+    }
+
+    if (!prefix) {
+      const { selectedPrefix } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'selectedPrefix',
+          message: 'Select commit type:',
+          choices: ['feat', 'fix', 'chore', 'docs', 'refactor', 'test', 'research'],
+        },
+      ]);
+      prefix = selectedPrefix;
     }
 
     console.log(`📋 Found Linear issue ID: ${linearId}`);
