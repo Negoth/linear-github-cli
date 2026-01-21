@@ -16,8 +16,8 @@ const pkgPathCandidates = [
   resolve(__dirname, '..', 'package.json'),
 ];
 const pkgPath = pkgPathCandidates.find(candidate => existsSync(candidate));
-if (pkgPath) {
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+const pkg = pkgPath ? JSON.parse(readFileSync(pkgPath, 'utf-8')) : null;
+if (pkg) {
   updateNotifier({ pkg }).notify();
 }
 
@@ -26,7 +26,7 @@ const program = new Command();
 program
   .name('lg')
   .description('Linear + GitHub Integration CLI - Create GitHub issues with Linear sync')
-  .version('1.1.0');
+  .version(pkg?.version ?? 'unknown');
 
 program
   .command('create-parent')
