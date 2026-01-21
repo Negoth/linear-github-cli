@@ -4,7 +4,7 @@
 # Alerts user about unpushed commits to prevent including them in PR body
 #
 # Installation: Copy this file to .git/hooks/post-commit and make it executable
-#   cp scripts/linear-github/post-commit-hook.sh .git/hooks/post-commit
+#   cp scripts/post-commit-hook.sh .git/hooks/post-commit
 #   chmod +x .git/hooks/post-commit
 
 # Get current branch name

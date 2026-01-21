@@ -241,13 +241,15 @@ The tool waits 5 seconds for Linear sync. If the issue still isn't found:
 
 ```
 lg (CLI)
-├── cli.ts                    # CLI entry point (Commander.js)
-├── commands/
-│   ├── create-parent.ts     # Parent issue command
-│   └── create-sub.ts        # Sub-issue command
-├── linear-client.ts          # Linear SDK wrapper
-├── github-client.ts          # GitHub CLI/API wrapper
-└── input-handler.ts          # Interactive prompts (Inquirer.js)
+├── src/
+│   ├── cli.ts                # CLI entry point (Commander.js)
+│   ├── commands/
+│   │   ├── create-parent.ts  # Parent issue command
+│   │   └── create-sub.ts     # Sub-issue command
+│   ├── linear-client.ts      # Linear SDK wrapper
+│   ├── github-client.ts      # GitHub CLI/API wrapper
+│   └── input-handler.ts      # Interactive prompts (Inquirer.js)
+└── scripts/                  # Helper shell scripts
 ```
 
 ## Development

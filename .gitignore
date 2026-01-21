@@ -28,6 +28,8 @@ Thumbs.db
 
 # cursor
 .cursor/
+AGENTS.md
 
 # claude
 .claude/
+CLAUDE.md

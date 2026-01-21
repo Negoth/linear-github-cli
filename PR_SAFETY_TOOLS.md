@@ -22,7 +22,7 @@ Replace `gh alias prdf` with a safe wrapper function that checks for unpushed co
 
 ```bash
 # Run setup script (adds prdf function to ~/.zshrc or ~/.bashrc)
-bash setup-prdf.sh
+bash scripts/setup-prdf.sh
 
 # Reload shell config
 source ~/.zshrc  # or source ~/.bashrc
@@ -43,7 +43,7 @@ prdf
 - If 1 unpushed commit: Creates PR (single commit is usually intentional)
 - If 2+ unpushed commits: Shows warning, lists commits, prompts for confirmation
 
-### Solution 2: Post-Commit Hook (`post-commit-hook.sh`)
+### Solution 2: Post-Commit Hook (`scripts/post-commit-hook.sh`)
 
 A git hook that warns about unpushed commits after each commit.
 
@@ -57,10 +57,10 @@ A git hook that warns about unpushed commits after each commit.
 
 ```bash
 # Install using the installation script (recommended)
-bash install-hooks.sh
+bash scripts/install-hooks.sh
 
 # Or manually:
-cp post-commit-hook.sh .git/hooks/post-commit
+cp scripts/post-commit-hook.sh .git/hooks/post-commit
 chmod +x .git/hooks/post-commit
 ```
 
@@ -87,7 +87,7 @@ Replace `gh alias prdf` with the safe wrapper function:
 gh alias delete prdf
 
 # Setup prdf function
-bash setup-prdf.sh
+bash scripts/setup-prdf.sh
 source ~/.zshrc  # or source ~/.bashrc
 
 # Now use prdf directly (not gh prdf)
@@ -118,10 +118,10 @@ gh pr ready
 
 ## Files
 
-- `gh-pr-safe.sh` - Safe wrapper script for `gh pr create --fill` (used by prdf function)
-- `setup-prdf.sh` - Setup script to add prdf function to shell config
-- `post-commit-hook.sh` - Git post-commit hook script
-- `install-hooks.sh` - Installation script for git hooks
+- `scripts/gh-pr-safe.sh` - Safe wrapper script for `gh pr create --fill` (used by prdf function)
+- `scripts/setup-prdf.sh` - Setup script to add prdf function to shell config
+- `scripts/post-commit-hook.sh` - Git post-commit hook script
+- `scripts/install-hooks.sh` - Installation script for git hooks
 
 ## Troubleshooting
 
@@ -134,14 +134,14 @@ ls -la .git/hooks/post-commit
 
 Reinstall if needed:
 ```bash
-bash install-hooks.sh
+bash scripts/install-hooks.sh
 ```
 
 ### prdf function not found
 
 Ensure you've run the setup script and reloaded your shell config:
 ```bash
-bash setup-prdf.sh
+bash scripts/setup-prdf.sh
 source ~/.zshrc  # or source ~/.bashrc
 ```
 
