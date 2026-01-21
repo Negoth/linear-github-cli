@@ -1,7 +1,11 @@
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import inquirer from 'inquirer';
+import { join } from 'path';
+import readline from 'readline';
 import { GitHubClientWrapper } from './github-client';
 import { LinearClientWrapper } from './linear-client';
+import { tmpdir } from 'os';
 
 const isValidDateYmd = (input: string): boolean => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input)) return false;
@@ -14,6 +18,103 @@ const isValidDateYmd = (input: string): boolean => {
     date.getUTCMonth() === month - 1 &&
     date.getUTCDate() === day
   );
+};
+
+const WAIT_FLAG_EDITORS: Record<string, string> = {
+  code: '--wait',
+  'code-insiders': '--wait',
+  cursor: '--wait',
+  'cursor-insiders': '--wait',
+  subl: '-w',
+  sublime_text: '-w',
+  atom: '--wait',
+};
+
+const hasWaitFlag = (command: string): boolean =>
+  /\s--wait\b/.test(command) || /\s-w\b/.test(command);
+
+const resolveEditorCommand = (): string => {
+  const envEditor = process.env.LG_EDITOR || process.env.VISUAL || process.env.EDITOR;
+  const base = (envEditor && envEditor.trim().length > 0 ? envEditor : 'vim').trim();
+  const binary = base.split(/\s+/)[0];
+  const waitFlag = WAIT_FLAG_EDITORS[binary];
+
+  if (waitFlag && !hasWaitFlag(base)) {
+    return `${base} ${waitFlag}`;
+  }
+
+  return base;
+};
+
+const openEditorForText = (editorCommand: string, initialText = ''): string => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'lg-editor-'));
+  const tempFilePath = join(tempDir, 'issue-body.md');
+  try {
+    writeFileSync(tempFilePath, initialText, 'utf-8');
+    const quotedPath = `"${tempFilePath.replace(/"/g, '\\"')}"`;
+    const command = `${editorCommand} ${quotedPath}`;
+    const result = spawnSync(command, { stdio: 'inherit', shell: true });
+    if (result.error) {
+      throw result.error;
+    }
+    return readFileSync(tempFilePath, 'utf-8');
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+};
+
+const promptDescriptionAction = async (): Promise<'edit' | 'skip'> => {
+  const stdin = process.stdin;
+  const stdout = process.stdout;
+
+  if (!stdin.isTTY || !stdout.isTTY) {
+    return 'skip';
+  }
+
+  stdout.write('Body [press e to launch editor, Enter to skip]: ');
+  const rl = readline.createInterface({ input: stdin, output: stdout });
+  readline.emitKeypressEvents(stdin, rl);
+
+  if (typeof stdin.setRawMode === 'function') {
+    stdin.setRawMode(true);
+  }
+  stdin.resume();
+
+  return new Promise(resolve => {
+    const cleanup = () => {
+      stdin.removeListener('keypress', onKeypress);
+      if (typeof stdin.setRawMode === 'function') {
+        stdin.setRawMode(false);
+      }
+      rl.close();
+    };
+
+    const onKeypress = (_: string, key: readline.Key) => {
+      const keyName = key?.name ?? '';
+      const keySeq = key?.sequence ?? '';
+
+      if (key?.ctrl && keyName === 'c') {
+        stdout.write('\n');
+        cleanup();
+        process.exit(130);
+      }
+
+      if (keyName === 'return' || keySeq === '\r') {
+        stdout.write('\n');
+        cleanup();
+        resolve('skip');
+        return;
+      }
+
+      if (keyName.toLowerCase() === 'e' || keySeq.toLowerCase() === 'e') {
+        stdout.write('\n');
+        cleanup();
+        resolve('edit');
+      }
+    };
+
+    stdin.on('keypress', onKeypress);
+  });
 };
 
 export class InputHandler {
@@ -172,22 +273,38 @@ export class InputHandler {
       ];
     }
 
-    const answers = await inquirer.prompt([
+    const baseAnswers = await inquirer.prompt([
       {
         type: 'input',
         name: 'title',
         message: 'Issue title (required):',
         validate: (input: string) => input.length > 0 || 'Title is required',
       },
-      {
-        type: 'input',
-        name: 'descriptionAction',
-        message: 'Body [(e) to launch vim, enter to skip]:',
-        validate: (input: string) => {
-          const value = input.trim().toLowerCase();
-          return value === '' || value === 'e' || 'Enter "e" to edit or press enter to skip';
-        },
-      },
+    ]);
+
+    let description = '';
+    const descriptionAction = await promptDescriptionAction();
+    if (descriptionAction === 'edit') {
+      const editorCommand = resolveEditorCommand();
+      try {
+        description = openEditorForText(editorCommand).trimEnd();
+      } catch (error) {
+        console.error('\n⚠️  Failed to open editor for issue description.');
+        console.error(`   Editor command: ${editorCommand}`);
+        console.error('   Tip: set $EDITOR or $VISUAL to a terminal editor (e.g. "vim")');
+        console.error('   or a GUI editor with wait flag (e.g. "code --wait").\n');
+        const { description: fallbackDescription } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'description',
+            message: 'Issue description (single line or paste text):',
+          },
+        ]);
+        description = fallbackDescription || '';
+      }
+    }
+
+    const answers = await inquirer.prompt([
       {
         type: 'input',
         name: 'startDate',
@@ -214,20 +331,8 @@ export class InputHandler {
       },
     ]);
 
-    let description = '';
-    if (answers.descriptionAction.trim().toLowerCase() === 'e') {
-      const { description: editedDescription } = await inquirer.prompt([
-        {
-          type: 'editor',
-          name: 'description',
-          message: 'Issue description:',
-        },
-      ]);
-      description = editedDescription || '';
-    }
-
     return {
-      title: answers.title,
+      title: baseAnswers.title,
       description,
       dueDate: answers.dueDate || '',
       startDate: answers.startDate || '',
