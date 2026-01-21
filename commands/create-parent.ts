@@ -94,21 +94,27 @@ export async function createParentIssue() {
   if (linearIssueId) {
     console.log('✅ Found Linear issue, updating metadata...');
     
-    // Auto-find Linear project if GitHub project was selected
+    // Auto-find/create Linear project if GitHub project was selected
     let linearProjectId: string | null = null;
+    let linearProjectName: string | null = null;
     if (githubProject) {
       console.log(`   Looking for Linear project matching "${githubProject}"...`);
       linearProjectId = await linearClient.findProjectByName(githubProject);
       if (linearProjectId) {
+        linearProjectName = githubProject;
         console.log(`   ✅ Found matching Linear project: ${githubProject}`);
       } else {
-        console.log(`   ⚠️  No matching Linear project found. You can set it manually.`);
+        console.log(`   ⚠️  No matching Linear project found. Creating "${githubProject}"...`);
+        const teamId = await linearClient.getIssueTeamId(linearIssueId);
+        const createdProject = await linearClient.createProject(githubProject, teamId || undefined);
+        if (createdProject) {
+          linearProjectId = createdProject.id;
+          linearProjectName = createdProject.name;
+          console.log(`   ✅ Created Linear project: ${createdProject.name}`);
+        } else {
+          console.log(`   ⚠️  Failed to create Linear project. You can set it manually.`);
+        }
       }
-    }
-    
-    // If no auto-match, ask user (only if GitHub project wasn't selected)
-    if (!linearProjectId && !githubProject) {
-      linearProjectId = await inputHandler.selectLinearProject();
     }
     
     // Set labels on Linear issue
@@ -132,7 +138,7 @@ export async function createParentIssue() {
     if (success) {
       console.log('✅ Linear issue metadata updated!');
       if (linearProjectId) {
-        console.log(`   Project: ${githubProject || 'selected project'}`);
+        console.log(`   Project: ${linearProjectName || githubProject || 'linked'}`);
       }
       if (details.dueDate) {
         console.log(`   Due date: ${details.dueDate}`);
