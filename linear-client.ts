@@ -201,6 +201,36 @@ export class LinearClientWrapper {
     return issues.nodes[0]?.id || null;
   }
 
+  async waitForIssueByGitHubUrl(
+    githubUrl: string,
+    options: {
+      maxAttempts?: number;
+      delayMs?: number;
+      onRetry?: (attempt: number, maxAttempts: number, delayMs: number) => void;
+    } = {}
+  ): Promise<string | null> {
+    const delayMs = options.delayMs ?? 5000;
+    const maxAttempts = options.maxAttempts;
+
+    for (let attempt = 1; ; attempt++) {
+      const issueId = await this.findIssueByGitHubUrl(githubUrl);
+      if (issueId) {
+        return issueId;
+      }
+
+      if (maxAttempts !== undefined && attempt >= maxAttempts) {
+        return null;
+      }
+
+      options.onRetry?.(attempt, maxAttempts ?? Number.POSITIVE_INFINITY, delayMs);
+      if (delayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+  }
+
   async getIssueIdentifier(issueId: string): Promise<string | null> {
     try {
       const issue = await this.client.issue(issueId);
