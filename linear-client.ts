@@ -30,6 +30,45 @@ export class LinearClientWrapper {
     }
   }
 
+  async createProject(projectName: string, teamId?: string): Promise<{ id: string; name: string } | null> {
+    try {
+      const mutation = `mutation CreateProject($input: ProjectCreateInput!) {
+        projectCreate(input: $input) {
+          success
+          project { id name }
+        }
+      }`;
+
+      const input: any = { name: projectName };
+      if (teamId) {
+        input.teamIds = [teamId];
+      }
+
+      const response = await fetch('https://api.linear.app/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': linearApiKey,
+        },
+        body: JSON.stringify({
+          query: mutation,
+          variables: { input },
+        }),
+      });
+
+      const result = await response.json();
+      if (result.errors || !result.data?.projectCreate?.success) {
+        console.error(`❌ Failed to create project "${projectName}":`, result.errors);
+        return null;
+      }
+
+      return result.data.projectCreate.project ?? null;
+    } catch (error) {
+      console.error(`❌ Error creating project "${projectName}":`, error);
+      return null;
+    }
+  }
+
   async getWorkflowStates(teamId?: string): Promise<Array<{ id: string; name: string; type: string }>> {
     try {
       // Get workflow states from teams

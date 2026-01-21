@@ -115,10 +115,7 @@ export async function createSubIssue() {
       console.log(`   ⚠️  Parent Linear issue not found yet (may need more time to sync)`);
     }
     
-    // If no parent project, ask user (only if no parent project found)
-    if (!linearProjectId) {
-      linearProjectId = await inputHandler.selectLinearProject();
-    }
+    // If no parent project, leave project unset (no prompt)
     
     // Set labels on Linear issue
     if (details.labels && details.labels.length > 0) {
