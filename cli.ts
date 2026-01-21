@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import updateNotifier from 'update-notifier';
 import { createParentIssue } from './commands/create-parent';
@@ -10,9 +10,16 @@ import { loadEnvFile } from './env-utils';
 // Load .env file from current working directory, parent directories, or home directory
 loadEnvFile();
 
-// Check for updates
-const pkg = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf-8'));
-updateNotifier({ pkg }).notify();
+// Check for updates (support both dev and built paths)
+const pkgPathCandidates = [
+  resolve(__dirname, 'package.json'),
+  resolve(__dirname, '..', 'package.json'),
+];
+const pkgPath = pkgPathCandidates.find(candidate => existsSync(candidate));
+if (pkgPath) {
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+  updateNotifier({ pkg }).notify();
+}
 
 const program = new Command();
 
