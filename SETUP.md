@@ -183,7 +183,7 @@ npm install -g tsx
 
 Or use npx (if installed from source):
 ```bash
-npx tsx cli.ts create-parent
+npx tsx src/cli.ts create-parent
 ```
 
 ## Next Steps

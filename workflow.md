@@ -89,7 +89,7 @@ gh prms
 **Setup prdf function:**
 ```bash
 # Run setup script to add prdf function to your shell config
-bash setup-prdf.sh
+bash scripts/setup-prdf.sh
 source ~/.zshrc  # or source ~/.bashrc
 ```
 
@@ -137,7 +137,7 @@ gh pr create --draft --fill
 # gh pr create --draft --fill
 
 # Option C: Use prdf function (recommended to avoid unpushed commits in PR body)
-# prdf  # Setup via: bash setup-prdf.sh
+# prdf  # Setup via: bash scripts/setup-prdf.sh
 
 # === 2. Start Work ===
 # Begin coding...
@@ -428,7 +428,7 @@ Replace the `gh alias` `prdf` with a safe wrapper function that checks for unpus
 
 ```bash
 # Setup prdf function (adds to ~/.zshrc or ~/.bashrc)
-bash setup-prdf.sh
+bash scripts/setup-prdf.sh
 
 # Reload shell config
 source ~/.zshrc  # or source ~/.bashrc
@@ -451,10 +451,10 @@ Install a git hook that warns about unpushed commits after each commit:
 
 ```bash
 # Install the hook
-bash install-hooks.sh
+bash scripts/install-hooks.sh
 
 # Or manually:
-cp post-commit-hook.sh .git/hooks/post-commit
+cp scripts/post-commit-hook.sh .git/hooks/post-commit
 chmod +x .git/hooks/post-commit
 ```
 
@@ -464,7 +464,7 @@ The hook will display a warning after each commit if there are unpushed commits,
 
 Use both solutions for maximum protection:
 1. Install the post-commit hook for continuous reminders
-2. Setup `prdf` function to replace `gh alias prdf` (run `setup-prdf.sh`)
+2. Setup `prdf` function to replace `gh alias prdf` (run `scripts/setup-prdf.sh`)
 
 ## Troubleshooting
 
@@ -490,9 +490,9 @@ Use both solutions for maximum protection:
 
 ### Unpushed commits included in PR body
 
-1. Setup `prdf` function: `bash setup-prdf.sh`
+1. Setup `prdf` function: `bash scripts/setup-prdf.sh`
 2. Use `prdf` instead of `gh prdf` (function replaces alias)
-3. Install post-commit hook to get warnings: `bash install-hooks.sh`
+3. Install post-commit hook to get warnings: `bash scripts/install-hooks.sh`
 4. Always push commits before creating PR: `git push`
 
 ## Summary
@@ -543,6 +543,6 @@ gh prms      # Merge with squash and delete branch
 9. Merge → `gh prms` (Linear: Done, GitHub: Closed)
 10. Cleanup → `git fetch --prune` or `gfa` (optional)
 
-**Note:** To prevent unpushed commits from being included in PR body, setup `prdf` function via `bash setup-prdf.sh` or ensure all commits are pushed before creating PR.
+**Note:** To prevent unpushed commits from being included in PR body, setup `prdf` function via `bash scripts/setup-prdf.sh` or ensure all commits are pushed before creating PR.
 
 This workflow provides clear visibility into task status and progress throughout the development cycle.

@@ -1,5 +1,5 @@
 import inquirer from 'inquirer';
-import { checkUnpushedCommitsOnCurrentBranch, createGitBranch, generateBranchName } from '../branch-utils';
+import { createGitBranch, generateBranchName } from '../branch-utils';
 import { GitHubClientWrapper } from '../github-client';
 import { InputHandler } from '../input-handler';
 import { LinearClientWrapper } from '../linear-client';
@@ -27,23 +27,6 @@ export async function createParentIssue() {
   const inputHandler = new InputHandler(linearClient, githubClient);
   const repo = await inputHandler.selectRepository();
   githubClient.repo = repo;
-
-  // Check for unpushed commits on current branch
-  const unpushedCheck = checkUnpushedCommitsOnCurrentBranch();
-  if (unpushedCheck.hasUnpushed) {
-    console.log('\n⚠️  Warning: There are unpushed commits on the current branch.');
-    console.log(`   Found ${unpushedCheck.count} unpushed commit(s):`);
-    unpushedCheck.commits.forEach(commit => {
-      console.log(`   - ${commit}`);
-    });
-    console.log('\n   If you create a branch from this state, these commits will be included in PR body.');
-    console.log('   Please push commits first:');
-    console.log('     git push');
-    console.log('\n   Then re-run this command.');
-    process.exit(1);
-  } else {
-    console.log('✓ No unpushed commits on current branch');
-  }
 
   // Step 2: Get issue details
   const details = await inputHandler.promptIssueDetails(repo);
