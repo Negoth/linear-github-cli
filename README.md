@@ -1,6 +1,7 @@
 # Linear + GitHub CLI Tool
 
-A CLI tool for creating GitHub issues with Linear integration, providing an interactive experience with autocomplete and dropdown selections.
+A CLI tool for creating GitHub issues with Linear integration, providing an
+interactive experience with autocomplete and dropdown selections.
 
 ## Installation
 
@@ -69,11 +70,13 @@ export LINEAR_API_KEY="lin_api_..."
 ```
 
 **Get your Linear API key:**
+
 1. Go to [Linear Settings > API](https://linear.app/settings/api)
 2. Create a new Personal API Key
 3. Copy the key (starts with `lin_api_`)
 
-**Note:** The `.env` file is already in `.gitignore`, so it won't be committed to Git.
+**Note:** The `.env` file is already in `.gitignore`, so it won't be committed
+to Git.
 
 ### 3. Authenticate GitHub CLI
 
@@ -93,11 +96,13 @@ lg parent
 ```
 
 Follow the interactive prompts:
+
 1. Select repository from dropdown
 2. Enter issue title (required)
 3. Enter description (opens in editor)
 4. Set due date (YYYY-MM-DD, required)
-5. Select GitHub labels (checkboxes). Choices: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `research`
+5. Select GitHub labels (checkboxes). Choices: `feat`, `fix`, `chore`, `docs`,
+   `refactor`, `test`, `research`
 6. Optionally select GitHub project
 7. Optionally select Linear project (after sync)
 
@@ -110,6 +115,7 @@ lg sub
 ```
 
 Follow the interactive prompts:
+
 1. Select repository from dropdown
 2. Select parent issue from list
 3. Enter sub-issue title (required)
@@ -128,14 +134,21 @@ lg create-sub --help
 
 ## Features
 
-- ✅ **Interactive repository selection**: Choose from accessible GitHub repositories
+- ✅ **Interactive repository selection**: Choose from accessible GitHub
+  repositories
 - ✅ **Project autocomplete**: Select GitHub and Linear projects from dropdowns
-- ✅ **Parent issue selection**: Browse and select parent issues when creating sub-issues
-- ✅ **GitHub label sync**: Multi-select from the seven standard labels (feat, fix, chore, docs, refactor, test, research); selections are mirrored to matching Linear team labels
+- ✅ **Parent issue selection**: Browse and select parent issues when creating
+  sub-issues
+- ✅ **GitHub label sync**: Multi-select from the seven standard labels (feat,
+  fix, chore, docs, refactor, test, research); selections are mirrored to
+  matching Linear team labels
 - ✅ **Due date input**: Required date picker with validation
-- ✅ **Automatic Linear sync**: Waits for Linear sync and updates metadata (due date, project, labels)
-- ✅ **Parent-child relationships**: Automatically links sub-issues to parent issues
-- ✅ **Status automation**: Issues start in Linear backlog; rely on the Linear × GitHub PR automation for status changes
+- ✅ **Automatic Linear sync**: Waits for Linear sync and updates metadata (due
+  date, project, labels)
+- ✅ **Parent-child relationships**: Automatically links sub-issues to parent
+  issues
+- ✅ **Status automation**: Issues start in Linear backlog; rely on the Linear ×
+  GitHub PR automation for status changes
 
 ## Examples
 
@@ -159,7 +172,8 @@ LINEAR_API_KEY="lin_api_..." lg create-parent
 
 - **Node.js** 18+ and npm
 - **GitHub CLI** (`gh`) installed and authenticated
-- **Linear API key** (get from [Linear Settings](https://linear.app/settings/api))
+- **Linear API key** (get from
+  [Linear Settings](https://linear.app/settings/api))
 
 ## Building from Source
 
@@ -185,6 +199,7 @@ export LINEAR_API_KEY="lin_api_..."
 If start date or target date fields are not being set in GitHub Projects:
 
 1. **Enable debug mode** to see detailed logs:
+
    ```bash
    DEBUG=true lg parent
    ```
@@ -195,9 +210,36 @@ If start date or target date fields are not being set in GitHub Projects:
    - Any GraphQL errors
 
 3. **Common issues**:
-   - The issue may not be indexed in the project yet (the tool will retry automatically)
+   - The issue may not be indexed in the project yet (the tool will retry
+     automatically)
    - The project may not have "Target" or "Start" date fields configured
    - Network or API rate limiting issues
+
+### Sub-issues not added to GitHub Project automatically
+
+When creating sub-issues, they may not be automatically added to the same GitHub
+Project as the parent issue. This depends on the project's built-in workflow
+settings.
+
+**Option 1: Enable the built-in project workflow**
+
+1. Go to your GitHub Project → Settings → Workflows
+2. Enable the "Auto-add to project" workflow and configure the filter to include
+   sub-issues
+
+**Option 2: Add a GitHub Action**
+
+Copy the example workflow into your repository:
+
+```bash
+cp examples/workflows/auto-add-sub-issues-to-project.yml \
+  <your-repo>/.github/workflows/auto-add-sub-issues-to-project.yml
+```
+
+This action triggers on issue creation, checks if the new issue is a sub-issue,
+and adds it to the same project(s) as its parent. See
+[`examples/workflows/auto-add-sub-issues-to-project.yml`](examples/workflows/auto-add-sub-issues-to-project.yml)
+for details.
 
 ### "lg: command not found"
 
@@ -214,8 +256,10 @@ export PATH="$(npm config get prefix)/bin:$PATH"
 ### "gh: command not found"
 
 Install GitHub CLI:
+
 - **macOS**: `brew install gh`
-- **Linux/Windows**: See [GitHub CLI installation](https://cli.github.com/manual/installation)
+- **Linux/Windows**: See
+  [GitHub CLI installation](https://cli.github.com/manual/installation)
 
 ### Repository list is empty
 
@@ -228,11 +272,13 @@ gh auth login  # if not authenticated
 
 ### Projects not showing
 
-GitHub Projects might not be available via CLI in all repositories. This is optional - you can skip project selection.
+GitHub Projects might not be available via CLI in all repositories. This is
+optional - you can skip project selection.
 
 ### Linear issue not found after sync
 
 The tool waits 5 seconds for Linear sync. If the issue still isn't found:
+
 - Check Linear GitHub integration is enabled
 - Wait a bit longer and manually update metadata in Linear
 - The GitHub Actions workflow will also set metadata automatically
@@ -269,9 +315,15 @@ npm run build
 
 ## Label Behaviour
 
-- The CLI surfaces the seven standard GitHub labels: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `research`. (Custom GitHub labels can still be added manually after creation.)
-- When an issue syncs to Linear, the CLI ensures team-scoped Linear labels exist. New labels are created for the linked team if necessary and then attached to the issue.
-- Linear issues are always created in the backlog ("No status"). Move them forward by opening PRs and letting the Linear × GitHub integration handle status updates automatically.
+- The CLI surfaces the seven standard GitHub labels: `feat`, `fix`, `chore`,
+  `docs`, `refactor`, `test`, `research`. (Custom GitHub labels can still be
+  added manually after creation.)
+- When an issue syncs to Linear, the CLI ensures team-scoped Linear labels
+  exist. New labels are created for the linked team if necessary and then
+  attached to the issue.
+- Linear issues are always created in the backlog ("No status"). Move them
+  forward by opening PRs and letting the Linear × GitHub integration handle
+  status updates automatically.
 
 ## Future Enhancements
 
@@ -283,7 +335,8 @@ npm run build
 
 ## PR Creation Workflow
 
-After creating issues with `lg`, use the Linear-GitHub integration workflow to manage PRs and track progress.
+After creating issues with `lg`, use the Linear-GitHub integration workflow to
+manage PRs and track progress.
 
 ### Recommended Approach: Aliases
 
@@ -319,11 +372,13 @@ gh prms      # Merge with squash and delete branch
 ### Two PR Types
 
 **Completing PRs (Issue Completion):**
+
 - Include Linear issue ID in title: `LEA-123 Implement login`
 - Use `solve: #123` or `Closes #123` in body
 - Merging sets Linear status to `Done` and closes GitHub issue
 
 **Partial Progress PRs (Non-Completing):**
+
 - Do NOT include Linear issue ID in title: `Add login form`
 - Use `Ref: #123` in body
 - Merging keeps Linear status unchanged and doesn't close GitHub issue
@@ -344,13 +399,16 @@ Configure Linear's GitHub integration:
 
 ### Additional Notes
 
-For branch name auto-extraction or more complex logic, you can create custom shell functions or use `gh pr create --fill` interactively, which allows you to manually enter the issue number.
+For branch name auto-extraction or more complex logic, you can create custom
+shell functions or use `gh pr create --fill` interactively, which allows you to
+manually enter the issue number.
 
 For most cases, aliases or `gh pr create --fill` are simpler and sufficient.
 
 ### Documentation
 
-See `workflow.md` for complete workflow documentation, examples, and troubleshooting.
+See `workflow.md` for complete workflow documentation, examples, and
+troubleshooting.
 
 ## License
 
