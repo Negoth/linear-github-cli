@@ -49,6 +49,25 @@ export async function createSubIssue() {
   console.log(`✅ Sub-Issue #${subIssue.number} created: ${subIssue.url}`);
   console.log(`   Parent: #${parentIssueNumber}`);
 
+  // Set GitHub Project date fields using the parent issue's GitHub Project
+  // (independent of Linear sync, so dates are written even if Linear is slow)
+  if (details.dueDate || details.startDate) {
+    console.log('\n📅 Setting GitHub Project date fields...');
+    const parentGitHubProject = await githubClient.getIssueProject(repo, parentIssueNumber);
+    if (parentGitHubProject) {
+      console.log(`   Using parent issue's GitHub Project: ${parentGitHubProject}`);
+      await githubClient.setProjectDateFields(
+        repo,
+        parentGitHubProject,
+        subIssue.id,
+        details.dueDate || undefined,
+        details.startDate || undefined
+      );
+    } else {
+      console.log(`   ⚠️  Parent issue #${parentIssueNumber} is not in any GitHub Project. Skipping date fields.`);
+    }
+  }
+
   // Step 5: Wait for Linear sync, then update metadata
   const linearSyncDelayMs = 500;
   const linearSyncMaxWaitMs = 10000;
@@ -132,21 +151,6 @@ export async function createSubIssue() {
       }
       console.log('   Status: Will be updated automatically via PR integration');
 
-      // Set GitHub Project date fields if parent project is available and dates are provided
-      if (parentProjectName && (details.dueDate || details.startDate)) {
-        console.log('\n📅 Setting GitHub Project date fields...');
-        // Wait additional time for GitHub Actions to sync project assignment
-        console.log('   ⏳ Waiting for GitHub Actions sync (3 seconds)...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        await githubClient.setProjectDateFields(
-          repo,
-          parentProjectName,
-          subIssue.id,
-          details.dueDate || undefined,
-          details.startDate || undefined
-        );
-      }
     } else {
       console.log('⚠️  Failed to update Linear issue metadata. You can update it manually in Linear.');
     }

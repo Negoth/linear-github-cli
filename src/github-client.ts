@@ -325,144 +325,112 @@ export class GitHubClientWrapper {
   }
 
   /**
-   * Get project item ID by issue ID with retry and pagination support
+   * Add an issue to a project and return its project item ID.
+   * addProjectV2ItemById is idempotent: if the issue is already in the project
+   * (e.g. added by `gh issue create --project` or a GitHub Action), the existing item is returned.
    */
-  async getProjectItemId(projectId: string, issueId: string, maxRetries = 3): Promise<string | null> {
+  async addProjectItem(projectId: string, issueId: string): Promise<string | null> {
     const debug = process.env.DEBUG === 'true';
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        let cursor: string | null = null;
-        let hasNextPage = true;
-        let allItems: Array<{ id: string; content: { id: string } }> = [];
-        
-        // Paginate through all items
-        while (hasNextPage) {
-          const query = cursor
-            ? `query {
-                node(id: "${projectId}") {
-                  ... on ProjectV2 {
-                    items(first: 100, after: "${cursor}") {
-                      pageInfo {
-                        hasNextPage
-                        endCursor
-                      }
-                      nodes {
-                        id
-                        content {
-                          ... on Issue {
-                            id
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }`
-            : `query {
-                node(id: "${projectId}") {
-                  ... on ProjectV2 {
-                    items(first: 100) {
-                      pageInfo {
-                        hasNextPage
-                        endCursor
-                      }
-                      nodes {
-                        id
-                        content {
-                          ... on Issue {
-                            id
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }`;
-          
-          if (debug) {
-            console.log(`   [DEBUG] Attempt ${attempt}/${maxRetries}: Querying project items${cursor ? ` (cursor: ${cursor})` : ''}`);
-          }
-          
-          const output = execSync(
-            `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
-            { encoding: 'utf-8', stdio: 'pipe' }
-          );
-          
-          const result = JSON.parse(output);
-          
-          if (debug) {
-            console.log(`   [DEBUG] GraphQL response:`, JSON.stringify(result, null, 2));
-          }
-          
-          if (result.errors) {
-            console.error(`   ⚠️  GraphQL errors on attempt ${attempt}:`, result.errors);
-            throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
-          }
-          
-          const itemsData = result.data?.node?.items;
-          if (!itemsData) {
-            console.error(`   ⚠️  Invalid response structure on attempt ${attempt}`);
-            if (debug) {
-              console.error(`   [DEBUG] Full response:`, JSON.stringify(result, null, 2));
-            }
-            throw new Error('Invalid response structure');
-          }
-          
-          const items = itemsData.nodes || [];
-          allItems = allItems.concat(items);
-          
-          hasNextPage = itemsData.pageInfo?.hasNextPage || false;
-          cursor = itemsData.pageInfo?.endCursor || null;
-          
-          if (debug) {
-            console.log(`   [DEBUG] Found ${items.length} items in this page (total: ${allItems.length}), hasNextPage: ${hasNextPage}`);
+
+    try {
+      const mutation = `mutation {
+        addProjectV2ItemById(input: { projectId: "${projectId}", contentId: "${issueId}" }) {
+          item {
+            id
           }
         }
-        
-        // Search for the item with matching issue ID
-        const item = allItems.find((i: { content: { id: string } }) => i.content?.id === issueId);
-        
+      }`;
+
+      const output = execSync(
+        `gh api graphql -f query="${mutation.replace(/"/g, '\\"')}"`,
+        { encoding: 'utf-8', stdio: 'pipe' }
+      );
+
+      const result = JSON.parse(output);
+
+      if (debug) {
+        console.log(`   [DEBUG] addProjectV2ItemById response:`, JSON.stringify(result, null, 2));
+      }
+
+      if (result.errors) {
+        console.error(`   ⚠️  GraphQL errors when adding issue to project:`, result.errors);
+        return null;
+      }
+
+      return result.data?.addProjectV2ItemById?.item?.id || null;
+    } catch (error: any) {
+      const errorMessage = error.stderr?.toString().trim() || error.message || String(error);
+      console.error(`   ⚠️  Failed to add issue to project: ${errorMessage}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get project item ID by issue ID, polling until the item appears or the timeout elapses.
+   * Queries the issue's own projectItems instead of scanning every item in the project.
+   */
+  async getProjectItemId(projectId: string, issueId: string, maxWaitMs = 30000): Promise<string | null> {
+    const debug = process.env.DEBUG === 'true';
+    const startedAt = Date.now();
+    let delayMs = 1000;
+
+    const query = `query {
+      node(id: "${issueId}") {
+        ... on Issue {
+          projectItems(first: 50) {
+            nodes {
+              id
+              project {
+                id
+              }
+            }
+          }
+        }
+      }
+    }`;
+
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const output = execSync(
+          `gh api graphql -f query="${query.replace(/"/g, '\\"')}"`,
+          { encoding: 'utf-8', stdio: 'pipe' }
+        );
+
+        const result = JSON.parse(output);
+
+        if (debug) {
+          console.log(`   [DEBUG] Attempt ${attempt}: projectItems response:`, JSON.stringify(result, null, 2));
+        }
+
+        if (result.errors) {
+          throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+        }
+
+        const items: Array<{ id: string; project: { id: string } }> =
+          result.data?.node?.projectItems?.nodes || [];
+        const item = items.find(i => i.project?.id === projectId);
+
         if (item) {
           if (attempt > 1) {
             console.log(`   ✅ Found project item after ${attempt} attempt(s)`);
           }
-          if (debug) {
-            console.log(`   [DEBUG] Found item ID: ${item.id} for issue ID: ${issueId}`);
-          }
           return item.id;
-        }
-        
-        // If not found and not last attempt, wait and retry
-        if (attempt < maxRetries) {
-          const waitTime = attempt * 1000; // 1s, 2s, 3s
-          console.log(`   ⏳ Project item not found (searched ${allItems.length} items), retrying in ${waitTime}ms... (attempt ${attempt}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        } else {
-          console.error(`   ⚠️  Project item not found after ${maxRetries} attempts (searched ${allItems.length} total items)`);
-          if (debug) {
-            console.error(`   [DEBUG] Issue ID being searched: ${issueId}`);
-            console.error(`   [DEBUG] Available issue IDs in project:`, allItems.map((i: { content: { id: string } }) => i.content?.id).slice(0, 10));
-          }
         }
       } catch (error: any) {
         const errorMessage = error.message || error.stderr || String(error);
-        console.error(`   ⚠️  Failed to get project item ID on attempt ${attempt}/${maxRetries}:`, errorMessage);
-        
-        if (debug) {
-          console.error(`   [DEBUG] Full error:`, error);
-        }
-        
-        // If not last attempt, wait and retry
-        if (attempt < maxRetries) {
-          const waitTime = attempt * 1000;
-          console.log(`   ⏳ Retrying in ${waitTime}ms...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
+        console.error(`   ⚠️  Failed to get project item ID on attempt ${attempt}: ${errorMessage}`);
       }
+
+      const elapsedMs = Date.now() - startedAt;
+      if (elapsedMs + delayMs > maxWaitMs) {
+        console.error(`   ⚠️  Project item not found after ${Math.round(elapsedMs / 1000)}s (${attempt} attempts)`);
+        return null;
+      }
+
+      console.log(`   ⏳ Project item not found yet, retrying in ${delayMs}ms... (attempt ${attempt})`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      delayMs = Math.min(delayMs * 2, 5000);
     }
-    
-    return null;
   }
 
   /**
@@ -561,7 +529,7 @@ export class GitHubClientWrapper {
       console.log(`   Looking up project "${projectName}"...`);
       const projectId = await this.getProjectNodeId(repo, projectName);
       if (!projectId) {
-        console.error(`   ⚠️  Project "${projectName}" not found`);
+        console.error(`   ⚠️  Project "${projectName}" not found (GitHub Project titles must match exactly)`);
         if (debug) {
           console.error(`   [DEBUG] Tried to find project in repo: ${repo}`);
         }
@@ -572,12 +540,16 @@ export class GitHubClientWrapper {
         console.log(`   [DEBUG] Found project ID: ${projectId}`);
       }
 
-      // Get project item ID (with retry mechanism)
-      console.log(`   Looking up issue in project...`);
-      const itemId = await this.getProjectItemId(projectId, issueId);
+      // Add the issue to the project ourselves (idempotent) instead of waiting for
+      // `gh issue create --project` or a GitHub Action to finish syncing.
+      console.log(`   Adding issue to project...`);
+      let itemId = await this.addProjectItem(projectId, issueId);
+      if (!itemId) {
+        console.log(`   Looking up issue in project...`);
+        itemId = await this.getProjectItemId(projectId, issueId);
+      }
       if (!itemId) {
         console.error(`   ⚠️  Issue not found in project "${projectName}"`);
-        console.error(`   ⚠️  This may be due to a timing issue. The issue may appear in the project shortly.`);
         if (debug) {
           console.error(`   [DEBUG] Project ID: ${projectId}`);
           console.error(`   [DEBUG] Issue ID: ${issueId}`);
