@@ -4,9 +4,9 @@
   "description": "CLI tool for creating GitHub issues with Linear integration",
   "main": "dist/cli.js",
   "bin": {
-    "lg": "./dist/cli.js",
-    "linear-github": "./dist/cli.js",
-    "lgcmf": "./dist/lgcmf.js"
+    "lg": "dist/cli.js",
+    "linear-github": "dist/cli.js",
+    "lgcmf": "dist/lgcmf.js"
   },
   "scripts": {
     "build": "tsc && chmod +x dist/cli.js dist/lgcmf.js",
@@ -25,7 +25,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Negoth/linear-github-cli.git"
+    "url": "git+https://github.com/Negoth/linear-github-cli.git"
   },
   "bugs": {
     "url": "https://github.com/Negoth/linear-github-cli/issues"
