@@ -1,4 +1,5 @@
 import { LinearClient } from '@linear/sdk';
+import { gitHubIssueUrlSearchTerm, pickIssueIdByGitHubUrl } from './github-url';
 
 // Store API key for direct GraphQL calls
 let linearApiKey: string = '';
@@ -231,13 +232,29 @@ export class LinearClientWrapper {
     return labels?.nodes.map(l => ({ id: l.id, name: l.name })) || [];
   }
 
+  /**
+   * Finds the Linear issue linked to exactly this GitHub issue URL.
+   * A plain `contains` match is not enough: `/issues/1` would also match `/issues/13`.
+   */
   async findIssueByGitHubUrl(githubUrl: string): Promise<string | null> {
-    const issues = await this.client.issues({
-      filter: {
-        attachments: { url: { contains: githubUrl } }
+    const query = `query FindAttachmentsByUrl($term: String!) {
+      attachments(filter: { url: { containsIgnoreCase: $term } }, first: 100) {
+        nodes {
+          url
+          issue { id }
+        }
       }
-    });
-    return issues.nodes[0]?.id || null;
+    }`;
+    const response = await this.client.client.rawRequest<
+      { attachments: { nodes: Array<{ url: string; issue: { id: string } | null }> } },
+      { term: string }
+    >(query, { term: gitHubIssueUrlSearchTerm(githubUrl) });
+
+    const attachments = (response.data?.attachments.nodes ?? []).map(node => ({
+      url: node.url,
+      issueId: node.issue?.id,
+    }));
+    return pickIssueIdByGitHubUrl(attachments, githubUrl);
   }
 
   async waitForIssueByGitHubUrl(
