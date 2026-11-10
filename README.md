@@ -313,6 +313,25 @@ npm run dev create-sub
 npm run build
 ```
 
+### Test
+
+```bash
+npm test
+```
+
+### Release
+
+Releases are automated with
+[release-please](https://github.com/googleapis/release-please). Don't run
+`npm version` by hand.
+
+1. Merge PRs into `main` using conventional commits (`fix:` → patch, `feat:` →
+   minor, `feat!:` / `BREAKING CHANGE` → major).
+2. release-please opens or updates a release PR that bumps `package.json` and
+   `CHANGELOG.md`.
+3. Merging that PR creates the `vX.Y.Z` tag and GitHub Release, and publishes to
+   npm (Trusted Publishing).
+
 ## Label Behaviour
 
 - The CLI surfaces the seven standard GitHub labels: `feat`, `fix`, `chore`,
