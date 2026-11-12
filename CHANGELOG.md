@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.12](https://github.com/Negoth/linear-github-cli/compare/v1.3.11...v1.3.12) (2026-11-12)
+
+
+### Bug Fixes
+
+* **project:** skip warning when issue is already in the project ([#38](https://github.com/Negoth/linear-github-cli/issues/38)) ([f001cf8](https://github.com/Negoth/linear-github-cli/commit/f001cf8631d8eaed952438a163363807a4d250d7))
+
 ## [1.3.11](https://github.com/Negoth/linear-github-cli/compare/v1.3.10...v1.3.11) (2026-11-10)
 
 
