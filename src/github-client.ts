@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { execSync } from 'child_process';
+import { isAlreadyInProjectError } from './github-project-errors';
 
 export class GitHubClientWrapper {
   private octokit?: Octokit;
@@ -326,8 +327,10 @@ export class GitHubClientWrapper {
 
   /**
    * Add an issue to a project and return its project item ID.
-   * addProjectV2ItemById is idempotent: if the issue is already in the project
-   * (e.g. added by `gh issue create --project` or a GitHub Action), the existing item is returned.
+   * Returns null if the issue could not be added. If the issue is already in the project
+   * (e.g. added by `gh issue create --project` or a GitHub Action), GitHub rejects the mutation
+   * with "Content already exists in this project"; that case returns null silently so the
+   * caller can look up the existing item instead.
    */
   async addProjectItem(projectId: string, issueId: string): Promise<string | null> {
     const debug = process.env.DEBUG === 'true';
@@ -353,14 +356,22 @@ export class GitHubClientWrapper {
       }
 
       if (result.errors) {
-        console.error(`   ⚠️  GraphQL errors when adding issue to project:`, result.errors);
+        if (!isAlreadyInProjectError(JSON.stringify(result.errors))) {
+          console.error(`   ⚠️  GraphQL errors when adding issue to project:`, result.errors);
+        }
         return null;
       }
 
       return result.data?.addProjectV2ItemById?.item?.id || null;
     } catch (error: any) {
       const errorMessage = error.stderr?.toString().trim() || error.message || String(error);
-      console.error(`   ⚠️  Failed to add issue to project: ${errorMessage}`);
+      if (isAlreadyInProjectError(errorMessage)) {
+        if (debug) {
+          console.log(`   [DEBUG] Issue is already in the project: ${errorMessage}`);
+        }
+      } else {
+        console.error(`   ⚠️  Failed to add issue to project: ${errorMessage}`);
+      }
       return null;
     }
   }
@@ -540,8 +551,9 @@ export class GitHubClientWrapper {
         console.log(`   [DEBUG] Found project ID: ${projectId}`);
       }
 
-      // Add the issue to the project ourselves (idempotent) instead of waiting for
+      // Add the issue to the project ourselves instead of waiting for
       // `gh issue create --project` or a GitHub Action to finish syncing.
+      // If it is already there, fall back to looking up the existing item.
       console.log(`   Adding issue to project...`);
       let itemId = await this.addProjectItem(projectId, issueId);
       if (!itemId) {
